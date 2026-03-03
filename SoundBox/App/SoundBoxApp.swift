@@ -53,8 +53,11 @@ extension AppState: AudioEngineDelegate {
                 self.playerState.currentSubtitle = nil
             }
 
-            // 开始播放时加载字幕
+            // 开始播放时加载字幕并重置进度
             if state == .playing, let track = self.playlist.currentTrack {
+                // 重置进度
+                self.playerState.currentTime = 0
+
                 print("📝 检查字幕: subtitleURL = \(track.audioFile.subtitleURL?.path ?? "nil")")
                 if let subtitleURL = track.audioFile.subtitleURL {
                     print("📝 加载字幕: \(subtitleURL.lastPathComponent)")
