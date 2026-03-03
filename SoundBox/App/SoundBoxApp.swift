@@ -64,6 +64,33 @@ extension AppState: AudioEngineDelegate {
                     self.subtitleManager.reset()
                 }
             }
+
+            // 播放完成时自动播放下一曲
+            if state == .finished {
+                self.playNextTrack()
+            }
+        }
+    }
+
+    private func playNextTrack() {
+        guard !self.playlist.tracks.isEmpty else { return }
+
+        let nextIndex = self.playlist.currentIndex + 1
+
+        if nextIndex < self.playlist.tracks.count {
+            // 还有下一曲
+            self.playlist.currentIndex = nextIndex
+            if let track = self.playlist.currentTrack {
+                print("▶️ 自动播放下一曲: \(track.title)")
+                AudioEngine.shared.loadAndPlay(track.audioFile.url)
+            }
+        } else {
+            // 播放完毕，从头开始循环
+            self.playlist.currentIndex = 0
+            if let track = self.playlist.currentTrack {
+                print("🔄 播放列表完成，从头开始: \(track.title)")
+                AudioEngine.shared.loadAndPlay(track.audioFile.url)
+            }
         }
     }
 

@@ -172,6 +172,7 @@ enum PlaybackState: Equatable {
     case playing
     case paused
     case loading
+    case finished  // 播放完成（非用户手动停止）
     case error(String)
 
     var isPlaying: Bool {

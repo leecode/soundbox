@@ -101,7 +101,7 @@ class AudioEngine {
             if self.isPlaying {
                 self.isPlaying = false
                 self.stopProgressTimer()
-                self.delegate?.audioEngine(self, didChangeState: .stopped)
+                self.delegate?.audioEngine(self, didChangeState: .finished)
                 print("⏹️ 播放完成")
             }
         }
