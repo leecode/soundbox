@@ -50,9 +50,6 @@ struct PlayerMainView: View {
                 // 当前播放信息
                 CurrentTrackView(track: track)
 
-                // 波形可视化（预留）
-                WaveformView()
-
                 // 字幕显示
                 SubtitleView()
             } else {
@@ -122,21 +119,6 @@ struct CurrentTrackView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-    }
-}
-
-// MARK: - Waveform View (预留)
-struct WaveformView: View {
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<50, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.accentColor.opacity(0.5))
-                    .frame(width: 3, height: CGFloat.random(in: 10...40))
-            }
-        }
-        .frame(height: 60)
-        .opacity(0.5)
     }
 }
 
