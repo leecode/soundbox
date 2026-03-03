@@ -10,7 +10,6 @@ struct PlayerControlBar: View {
             // 进度条
             ProgressSlider(
                 value: $sliderValue,
-                range: 0...max(appState.playerState.totalDuration, 1),
                 onEditingChanged: { editing in
                     isDraggingSlider = editing
                     if !editing {
@@ -18,7 +17,6 @@ struct PlayerControlBar: View {
                     }
                 }
             )
-            .id(appState.playerState.totalDuration)  // 当 duration 变化时重新创建视图
             .onChange(of: appState.playerState.currentTime) { oldValue, newValue in
                 if !isDraggingSlider {
                     sliderValue = newValue
@@ -183,10 +181,14 @@ struct PlayerControlBar: View {
 // MARK: - Progress Slider
 struct ProgressSlider: View {
     @Binding var value: Double
-    let range: ClosedRange<Double>
     let onEditingChanged: (Bool) -> Void
 
+    @EnvironmentObject var appState: AppState
     @State private var isDragging = false
+
+    private var range: ClosedRange<Double> {
+        0...max(appState.playerState.totalDuration, 1)
+    }
 
     var body: some View {
         GeometryReader { geometry in
