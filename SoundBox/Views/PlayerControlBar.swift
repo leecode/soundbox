@@ -18,6 +18,7 @@ struct PlayerControlBar: View {
                     }
                 }
             )
+            .id(appState.playerState.totalDuration)  // 当 duration 变化时重新创建视图
             .onChange(of: appState.playerState.currentTime) { oldValue, newValue in
                 if !isDraggingSlider {
                     sliderValue = newValue
@@ -205,7 +206,8 @@ struct ProgressSlider: View {
                     .onChanged { gesture in
                         isDragging = true
                         onEditingChanged(true)
-                        let newValue = range.lowerBound + Double(gesture.location.x / geometry.size.width) * (range.upperBound - range.lowerBound)
+                        let ratio = Double(gesture.location.x / geometry.size.width)
+                        let newValue = range.lowerBound + ratio * (range.upperBound - range.lowerBound)
                         value = max(range.lowerBound, min(range.upperBound, newValue))
                     }
                     .onEnded { _ in
