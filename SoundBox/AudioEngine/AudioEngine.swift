@@ -205,7 +205,10 @@ class AudioEngine {
     }
 
     private func updateProgress() {
-        guard isPlaying else { return }
+        guard isPlaying else {
+            print("⚠️ updateProgress: isPlaying=false, 跳过更新")
+            return
+        }
 
         // 使用 playerNode 的播放时间，而不是 audioFile.framePosition
         // framePosition 只是文件读取指针，不会反映实际播放位置
