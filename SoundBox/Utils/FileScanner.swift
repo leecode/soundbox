@@ -35,16 +35,27 @@ class FileScanner {
 
                 if self.audioExtensions.contains(ext) {
                     print("🎵 发现音频文件: \(fileURL.lastPathComponent)")
-                    // 查找对应的字幕文件
+                    // 查找对应的字幕文件（支持 .wav.vtt 和 .vtt 两种格式）
                     let baseName = fileURL.deletingPathExtension().lastPathComponent
+                    let fullName = fileURL.lastPathComponent  // 包含扩展名，如 #1xxx.wav
                     var subtitleURL: URL? = nil
 
                     for subExt in self.subtitleExtensions {
-                        let subPath = fileURL.deletingLastPathComponent()
+                        // 先尝试 完整文件名.字幕扩展名（如 #1xxx.wav.vtt）
+                        let subPath1 = fileURL.deletingLastPathComponent()
+                            .appendingPathComponent(fullName + "." + subExt)
+                        if FileManager.default.fileExists(atPath: subPath1.path) {
+                            subtitleURL = subPath1
+                            print("📝 发现字幕文件: \(subPath1.lastPathComponent)")
+                            break
+                        }
+
+                        // 再尝试 基本名.字幕扩展名（如 #1xxx.vtt）
+                        let subPath2 = fileURL.deletingLastPathComponent()
                             .appendingPathComponent(baseName + "." + subExt)
-                        if FileManager.default.fileExists(atPath: subPath.path) {
-                            subtitleURL = subPath
-                            print("📝 发现字幕文件: \(subPath.lastPathComponent)")
+                        if FileManager.default.fileExists(atPath: subPath2.path) {
+                            subtitleURL = subPath2
+                            print("📝 发现字幕文件: \(subPath2.lastPathComponent)")
                             break
                         }
                     }
@@ -55,8 +66,20 @@ class FileScanner {
 
             print("📊 扫描完成: 共 \(fileCount) 个文件, \(audioFiles.count) 个音频文件")
 
-            // 按文件名排序
-            audioFiles.sort { $0.0.lastPathComponent < $1.0.lastPathComponent }
+            // 按文件名中的编号排序（如 #1, #2, #10 等）
+            audioFiles.sort { file1, file2 in
+                let name1 = file1.0.deletingPathExtension().lastPathComponent
+                let name2 = file2.0.deletingPathExtension().lastPathComponent
+                let num1 = self.extractTrackNumber(from: name1)
+                let num2 = self.extractTrackNumber(from: name2)
+
+                // 如果都能提取到编号，按编号排序
+                if let n1 = num1, let n2 = num2 {
+                    return n1 < n2
+                }
+                // 否则按文件名排序
+                return name1 < name2
+            }
 
             // 使用 DispatchGroup 同步处理每个文件
             let group = DispatchGroup()
@@ -122,5 +145,37 @@ class FileScanner {
     func isAudioFile(_ url: URL) -> Bool {
         let ext = url.pathExtension.lowercased()
         return audioExtensions.contains(ext)
+    }
+
+    // MARK: - Extract Track Number
+    /// 从文件名提取编号，支持格式：#1, #01, 01., 01-, (01) 等
+    private func extractTrackNumber(from filename: String) -> Int? {
+        // 尝试匹配 #数字 格式（如 #1, #10, #01）
+        let hashPattern = "#(\\d+)"
+        if let range = filename.range(of: hashPattern, options: .regularExpression),
+           let numberRange = Range(NSRange(range, in: filename), in: filename) {
+            let numberString = filename[numberRange].dropFirst() // 去掉 #
+            return Int(numberString)
+        }
+
+        // 尝试匹配开头的数字（如 01., 01-, 1_）
+        let leadingPattern = "^(\\d+)[.\\-_\\s]"
+        if let range = filename.range(of: leadingPattern, options: .regularExpression),
+           let numberRange = Range(NSRange(range, in: filename), in: filename) {
+            let numberString = filename[numberRange]
+            // 去掉末尾的分隔符
+            let digits = numberString.dropLast()
+            return Int(digits)
+        }
+
+        // 尝试匹配括号中的数字（如 (01), [01]）
+        let bracketPattern = "[\\[\\(](\\d+)[\\]\\)]"
+        if let range = filename.range(of: bracketPattern, options: .regularExpression) {
+            let substring = String(filename[range])
+            let digits = substring.filter { $0.isNumber }
+            return Int(digits)
+        }
+
+        return nil
     }
 }

@@ -105,12 +105,32 @@ class SubtitleManager: ObservableObject {
     private var currentIndex = 0
 
     func load(from url: URL) {
+        print("📝 SubtitleManager.load 被调用: \(url.path)")
         cues = VTTParser.parse(from: url)
         currentIndex = 0
         currentCue = nil
+        print("📝 解析到 \(cues.count) 条字幕")
+        if let first = cues.first {
+            print("📝 第一条: [\(first.startTime)-\(first.endTime)] \(first.text)")
+        }
     }
 
     func update(for time: TimeInterval) {
+        // 如果当前时间在索引之前（seek 或重新播放），重置索引从头搜索
+        if currentIndex > 0, let firstCue = cues.first, time < firstCue.startTime {
+            // 时间在所有字幕之前，清除当前字幕
+            if currentCue != nil {
+                currentCue = nil
+            }
+            currentIndex = 0
+            return
+        }
+
+        if currentIndex > 0 && time < cues[currentIndex].startTime {
+            // 时间回退了，从头开始搜索
+            currentIndex = 0
+        }
+
         // 找到当前时间对应的字幕
         while currentIndex < cues.count {
             let cue = cues[currentIndex]
@@ -123,11 +143,15 @@ class SubtitleManager: ObservableObject {
             } else if time > cue.endTime {
                 currentIndex += 1
             } else {
+                // time < cue.startTime，当前时间在字幕开始之前
                 break
             }
         }
 
-        currentCue = nil
+        // 当前时间没有对应字幕，清除
+        if currentCue != nil {
+            currentCue = nil
+        }
     }
 
     func reset() {

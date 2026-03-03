@@ -5,21 +5,26 @@ struct SubtitleView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            if let subtitle = appState.playerState.currentSubtitle {
+            if let subtitle = appState.playerState.currentSubtitle, !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(.body)
+                    .font(.title3)
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
-                    .padding()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(.ultraThinMaterial)
                     )
             } else {
-                Text("")
-                    .frame(height: 60)
+                // 占位，保持布局稳定
+                Text(" ")
+                    .font(.title3)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .opacity(0)
             }
         }
-        .frame(maxWidth: 500)
+        .frame(maxWidth: 600)
     }
 }

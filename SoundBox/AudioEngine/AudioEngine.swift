@@ -24,6 +24,7 @@ class AudioEngine {
     private var currentURL: URL?
 
     private var progressTimer: Timer?
+    private var playStartTime: TimeInterval = 0  // 记录每次播放的起始时间偏移
 
     // MARK: - Initialization
     private init() {
@@ -69,6 +70,7 @@ class AudioEngine {
 
             // 从文件开头开始播放
             audioFile.framePosition = 0
+            playStartTime = 0  // 从头开始播放
 
             // 安排播放整个文件
             playerNode.stop()
@@ -153,6 +155,7 @@ class AudioEngine {
 
         // 设置新位置
         audioFile.framePosition = clampedPosition
+        playStartTime = time  // 更新播放起始时间
 
         // 重新安排从新位置开始的播放
         playerNode.scheduleFile(audioFile, at: nil, completionHandler: { [weak self] in
@@ -185,9 +188,19 @@ class AudioEngine {
     }
 
     private func updateProgress() {
-        guard let audioFile = audioFile else { return }
+        guard isPlaying else { return }
 
-        let currentTime = Double(audioFile.framePosition) / audioFile.processingFormat.sampleRate
+        // 使用 playerNode 的播放时间，而不是 audioFile.framePosition
+        // framePosition 只是文件读取指针，不会反映实际播放位置
+        let currentTime: TimeInterval
+
+        if let lastRenderTime = playerNode.lastRenderTime,
+           let playerTime = playerNode.playerTime(forNodeTime: lastRenderTime) {
+            // playerTime 是从每次 scheduleFile 开始计算的，需要加上起始偏移
+            currentTime = playStartTime + Double(playerTime.sampleTime) / playerTime.sampleRate
+        } else {
+            currentTime = playStartTime
+        }
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
