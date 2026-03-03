@@ -116,6 +116,19 @@ class SubtitleManager: ObservableObject {
     }
 
     func update(for time: TimeInterval) {
+        // 如果没有字幕，直接返回
+        guard !cues.isEmpty else {
+            if currentCue != nil {
+                currentCue = nil
+            }
+            return
+        }
+
+        // 如果 currentIndex 越界，重置为 0
+        if currentIndex >= cues.count {
+            currentIndex = 0
+        }
+
         // 如果当前时间在索引之前（seek 或重新播放），重置索引从头搜索
         if currentIndex > 0, let firstCue = cues.first, time < firstCue.startTime {
             // 时间在所有字幕之前，清除当前字幕
