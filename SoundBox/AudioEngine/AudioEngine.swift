@@ -157,8 +157,12 @@ class AudioEngine {
     func seek(to time: TimeInterval) {
         guard let audioFile = audioFile else { return }
 
-        let framePosition = AVAudioFramePosition(time * audioFile.processingFormat.sampleRate)
-        let clampedPosition = max(0, min(framePosition, audioFile.length))
+        let sampleRate = audioFile.processingFormat.sampleRate
+        let startFrame = AVAudioFramePosition(time * sampleRate)
+        let clampedStart = max(0, min(startFrame, audioFile.length))
+        let frameCount = AVAudioFrameCount(audioFile.length - clampedStart)
+
+        guard frameCount > 0 else { return }
 
         // 更新 token，使旧的 completion handler 失效
         playbackToken &+= 1
@@ -167,12 +171,11 @@ class AudioEngine {
         // 停止当前播放
         playerNode.stop()
 
-        // 设置新位置
-        audioFile.framePosition = clampedPosition
-        playStartTime = time  // 更新播放起始时间
+        // 更新播放起始时间
+        playStartTime = time
 
-        // 重新安排从新位置开始的播放
-        playerNode.scheduleFile(audioFile, at: nil, completionHandler: { [weak self] in
+        // 使用 scheduleSegment 播放从指定位置到末尾
+        playerNode.scheduleSegment(audioFile, startingFrame: clampedStart, frameCount: frameCount, at: nil, completionHandler: { [weak self] in
             self?.handlePlaybackComplete(token: token)
         })
 
