@@ -18,7 +18,7 @@ struct PlayerControlBar: View {
                 }
             )
             .onChange(of: appState.playerState.currentTime) { oldValue, newValue in
-                if !isDraggingSlider && abs(oldValue - newValue) > 0.5 {
+                if !isDraggingSlider && abs(newValue - oldValue) > 0.5 {
                     sliderValue = newValue
                 }
             }

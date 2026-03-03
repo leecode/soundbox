@@ -37,6 +37,11 @@ class AppState: ObservableObject {
         subtitleManager.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
+
+        // 将 playerState 的变化传播到 AppState
+        playerState.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
     }
 
     private var cancellables = Set<AnyCancellable>()

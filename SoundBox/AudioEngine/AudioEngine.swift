@@ -85,6 +85,9 @@ class AudioEngine {
             playerNode.play()
             isPlaying = true
 
+            // 立即通知 delegate 总时长，不等待进度更新
+            delegate?.audioEngine(self, didUpdateProgress: 0, duration: totalDuration)
+
             // 启动进度更新定时器
             startProgressTimer()
 
@@ -149,7 +152,6 @@ class AudioEngine {
         if audioEngine.isRunning {
             audioEngine.pause()
         }
-
         audioFile = nil
         delegate?.audioEngine(self, didChangeState: .stopped)
     }
@@ -205,16 +207,12 @@ class AudioEngine {
     }
 
     private func updateProgress() {
-        guard isPlaying else {
-            print("⚠️ updateProgress: isPlaying=false, 跳过更新")
-            return
-        }
-
         // 使用 playerNode 的播放时间，而不是 audioFile.framePosition
         // framePosition 只是文件读取指针，不会反映实际播放位置
         let currentTime: TimeInterval
 
-        if let lastRenderTime = playerNode.lastRenderTime,
+        if isPlaying,
+           let lastRenderTime = playerNode.lastRenderTime,
            let playerTime = playerNode.playerTime(forNodeTime: lastRenderTime) {
             // playerTime 是从每次 scheduleFile 开始计算的，需要加上起始偏移
             currentTime = playStartTime + Double(playerTime.sampleTime) / playerTime.sampleRate
