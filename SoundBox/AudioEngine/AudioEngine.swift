@@ -25,6 +25,7 @@ class AudioEngine {
 
     private var progressTimer: Timer?
     private var playStartTime: TimeInterval = 0  // 记录每次播放的起始时间偏移
+    private var isSeeking = false  // 标记是否正在 seek，避免触发播放完成回调
 
     // MARK: - Initialization
     private init() {
@@ -98,6 +99,9 @@ class AudioEngine {
     private func handlePlaybackComplete() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            // 如果正在 seek，不触发播放完成回调
+            guard !self.isSeeking else { return }
+
             if self.isPlaying {
                 self.isPlaying = false
                 self.stopProgressTimer()
@@ -150,6 +154,9 @@ class AudioEngine {
         let framePosition = AVAudioFramePosition(time * audioFile.processingFormat.sampleRate)
         let clampedPosition = max(0, min(framePosition, audioFile.length))
 
+        // 标记正在 seek，避免触发播放完成回调
+        isSeeking = true
+
         // 停止当前播放
         playerNode.stop()
 
@@ -161,6 +168,9 @@ class AudioEngine {
         playerNode.scheduleFile(audioFile, at: nil, completionHandler: { [weak self] in
             self?.handlePlaybackComplete()
         })
+
+        // 清除 seek 标记
+        isSeeking = false
 
         if isPlaying {
             playerNode.play()
