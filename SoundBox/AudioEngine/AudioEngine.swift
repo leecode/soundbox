@@ -25,6 +25,7 @@ class AudioEngine {
 
     private var progressTimer: Timer?
     private var playStartTime: TimeInterval = 0  // 记录每次播放的起始时间偏移
+    private var playbackToken: UInt32 = 0  // 用于标识当前播放会话，避免旧的 completion handler 干扰
 
     // MARK: - Initialization
     private init() {
@@ -71,11 +72,13 @@ class AudioEngine {
             // 从文件开头开始播放
             audioFile.framePosition = 0
             playStartTime = 0  // 从头开始播放
+            playbackToken &+= 1  // 更新 token，使旧的 completion handler 失效
 
             // 安排播放整个文件
             playerNode.stop()
+            let token = playbackToken
             playerNode.scheduleFile(audioFile, at: nil) { [weak self] in
-                self?.handlePlaybackComplete()
+                self?.handlePlaybackComplete(token: token)
             }
 
             // 开始播放
@@ -95,36 +98,23 @@ class AudioEngine {
         }
     }
 
-    private func handlePlaybackComplete() {
+    private func handlePlaybackComplete(token: UInt32) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            // 检查是否真的是播放完成（播放位置接近末尾）
-            // 如果当前进度不在末尾附近，说明是被 stop/seek 中断的
-            let currentProgress = self.getCurrentProgress()
-            let isReallyFinished = currentProgress > 0.95  // 进度超过 95% 才认为是播放完成
+            // 只有 token 匹配时才处理（说明是当前会话的真正播放完成）
+            guard self.playbackToken == token else {
+                print("⏹️ 忽略过期的 completion handler (token: \(token), current: \(self.playbackToken))")
+                return
+            }
 
-            if self.isPlaying && isReallyFinished {
+            if self.isPlaying {
                 self.isPlaying = false
                 self.stopProgressTimer()
                 self.delegate?.audioEngine(self, didChangeState: .finished)
-                print("⏹️ 播放完成 (进度: \(String(format: "%.1f%%", currentProgress * 100)))")
+                print("⏹️ 播放完成")
             }
         }
-    }
-
-    private func getCurrentProgress() -> Double {
-        guard let audioFile = audioFile, totalDuration > 0 else { return 0 }
-
-        let currentTime: TimeInterval
-        if let lastRenderTime = playerNode.lastRenderTime,
-           let playerTime = playerNode.playerTime(forNodeTime: lastRenderTime) {
-            currentTime = playStartTime + Double(playerTime.sampleTime) / playerTime.sampleRate
-        } else {
-            currentTime = playStartTime
-        }
-
-        return currentTime / totalDuration
     }
 
     func pause() {
@@ -170,6 +160,10 @@ class AudioEngine {
         let framePosition = AVAudioFramePosition(time * audioFile.processingFormat.sampleRate)
         let clampedPosition = max(0, min(framePosition, audioFile.length))
 
+        // 更新 token，使旧的 completion handler 失效
+        playbackToken &+= 1
+        let token = playbackToken
+
         // 停止当前播放
         playerNode.stop()
 
@@ -179,7 +173,7 @@ class AudioEngine {
 
         // 重新安排从新位置开始的播放
         playerNode.scheduleFile(audioFile, at: nil, completionHandler: { [weak self] in
-            self?.handlePlaybackComplete()
+            self?.handlePlaybackComplete(token: token)
         })
 
         if isPlaying {
