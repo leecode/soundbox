@@ -25,7 +25,6 @@ class AudioEngine {
 
     private var progressTimer: Timer?
     private var playStartTime: TimeInterval = 0  // 记录每次播放的起始时间偏移
-    private var isSeeking = false  // 标记是否正在 seek，避免触发播放完成回调
 
     // MARK: - Initialization
     private init() {
@@ -99,16 +98,33 @@ class AudioEngine {
     private func handlePlaybackComplete() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            // 如果正在 seek，不触发播放完成回调
-            guard !self.isSeeking else { return }
 
-            if self.isPlaying {
+            // 检查是否真的是播放完成（播放位置接近末尾）
+            // 如果当前进度不在末尾附近，说明是被 stop/seek 中断的
+            let currentProgress = self.getCurrentProgress()
+            let isReallyFinished = currentProgress > 0.95  // 进度超过 95% 才认为是播放完成
+
+            if self.isPlaying && isReallyFinished {
                 self.isPlaying = false
                 self.stopProgressTimer()
                 self.delegate?.audioEngine(self, didChangeState: .finished)
-                print("⏹️ 播放完成")
+                print("⏹️ 播放完成 (进度: \(String(format: "%.1f%%", currentProgress * 100)))")
             }
         }
+    }
+
+    private func getCurrentProgress() -> Double {
+        guard let audioFile = audioFile, totalDuration > 0 else { return 0 }
+
+        let currentTime: TimeInterval
+        if let lastRenderTime = playerNode.lastRenderTime,
+           let playerTime = playerNode.playerTime(forNodeTime: lastRenderTime) {
+            currentTime = playStartTime + Double(playerTime.sampleTime) / playerTime.sampleRate
+        } else {
+            currentTime = playStartTime
+        }
+
+        return currentTime / totalDuration
     }
 
     func pause() {
@@ -154,9 +170,6 @@ class AudioEngine {
         let framePosition = AVAudioFramePosition(time * audioFile.processingFormat.sampleRate)
         let clampedPosition = max(0, min(framePosition, audioFile.length))
 
-        // 标记正在 seek，避免触发播放完成回调
-        isSeeking = true
-
         // 停止当前播放
         playerNode.stop()
 
@@ -168,9 +181,6 @@ class AudioEngine {
         playerNode.scheduleFile(audioFile, at: nil, completionHandler: { [weak self] in
             self?.handlePlaybackComplete()
         })
-
-        // 清除 seek 标记
-        isSeeking = false
 
         if isPlaying {
             playerNode.play()
