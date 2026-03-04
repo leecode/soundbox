@@ -96,6 +96,14 @@ extension AppState: AudioEngineDelegate {
     private func playNextTrack() {
         guard !self.playlist.tracks.isEmpty else { return }
 
+        // 单曲循环：重新播放当前曲目
+        if self.playlist.repeatMode == .one {
+            if let track = self.playlist.currentTrack {
+                AudioEngine.shared.loadAndPlay(track.audioFile.url)
+            }
+            return
+        }
+
         let nextIndex = self.playlist.currentIndex + 1
 
         if nextIndex < self.playlist.tracks.count {
@@ -104,11 +112,13 @@ extension AppState: AudioEngineDelegate {
                 AudioEngine.shared.loadAndPlay(track.audioFile.url)
             }
         } else if self.playlist.repeatMode == .all {
+            // 列表循环：回到第一首
             self.playlist.currentIndex = 0
             if let track = self.playlist.currentTrack {
                 AudioEngine.shared.loadAndPlay(track.audioFile.url)
             }
         }
+        // repeatMode == .none: 播放结束，不继续
     }
 
     func audioEngine(_ engine: AudioEngine, didUpdateProgress progress: TimeInterval, duration: TimeInterval) {

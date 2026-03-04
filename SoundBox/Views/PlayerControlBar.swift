@@ -107,6 +107,42 @@ struct PlayerControlBar: View {
             }
             .buttonStyle(.plain)
             .disabled(appState.playlist.tracks.isEmpty)
+
+            // 循环模式
+            Button(action: toggleRepeatMode) {
+                Image(systemName: repeatModeIcon)
+                    .font(.title3)
+                    .foregroundColor(appState.playlist.repeatMode == .none ? .secondary : .accentColor)
+            }
+            .buttonStyle(.plain)
+            .help(repeatModeHelpText)
+        }
+    }
+
+    private var repeatModeIcon: String {
+        switch appState.playlist.repeatMode {
+        case .none: return "repeat"
+        case .one: return "repeat.1"
+        case .all: return "repeat"
+        }
+    }
+
+    private var repeatModeHelpText: String {
+        switch appState.playlist.repeatMode {
+        case .none: return "循环: 关闭"
+        case .one: return "循环: 单曲"
+        case .all: return "循环: 列表"
+        }
+    }
+
+    private func toggleRepeatMode() {
+        switch appState.playlist.repeatMode {
+        case .none:
+            appState.playlist.repeatMode = .all
+        case .all:
+            appState.playlist.repeatMode = .one
+        case .one:
+            appState.playlist.repeatMode = .none
         }
     }
 
