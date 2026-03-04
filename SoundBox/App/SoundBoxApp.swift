@@ -35,6 +35,18 @@ struct SoundBoxApp: App {
 
                 Divider()
 
+                Button("快退5秒") {
+                    seekBackward()
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [])
+
+                Button("快进5秒") {
+                    seekForward()
+                }
+                .keyboardShortcut(.rightArrow, modifiers: [])
+
+                Divider()
+
                 Button("循环模式") {
                     toggleRepeatMode()
                 }
@@ -94,6 +106,19 @@ struct SoundBoxApp: App {
         case .one:
             appState.playlist.repeatMode = .none
         }
+    }
+
+    private func seekBackward() {
+        let currentTime = appState.playerState.currentTime
+        let newTime = max(0, currentTime - 5)
+        AudioEngine.shared.seek(to: newTime)
+    }
+
+    private func seekForward() {
+        let currentTime = appState.playerState.currentTime
+        let duration = appState.playerState.totalDuration
+        let newTime = min(duration, currentTime + 5)
+        AudioEngine.shared.seek(to: newTime)
     }
 }
 
