@@ -109,16 +109,27 @@ struct SoundBoxApp: App {
     }
 
     private func seekBackward() {
-        let currentTime = appState.playerState.currentTime
+        let currentTime = appState.playbackProgress.currentTime
         let newTime = max(0, currentTime - 5)
         AudioEngine.shared.seek(to: newTime)
     }
 
     private func seekForward() {
-        let currentTime = appState.playerState.currentTime
-        let duration = appState.playerState.totalDuration
+        let currentTime = appState.playbackProgress.currentTime
+        let duration = appState.playbackProgress.totalDuration
         let newTime = min(duration, currentTime + 5)
         AudioEngine.shared.seek(to: newTime)
+    }
+}
+
+// MARK: - Playback Progress
+class PlaybackProgress: ObservableObject {
+    @Published var currentTime: TimeInterval = 0
+    @Published var totalDuration: TimeInterval = 0
+
+    var progress: Double {
+        guard totalDuration > 0 else { return 0 }
+        return currentTime / totalDuration
     }
 }
 
@@ -127,6 +138,7 @@ class AppState: ObservableObject {
     @Published var playerState = PlayerState()
     var playlist: Playlist = Playlist()
     var subtitleManager = SubtitleManager()
+    var playbackProgress = PlaybackProgress()
 
     private let fileScanner = FileScanner()
 
@@ -146,6 +158,11 @@ class AppState: ObservableObject {
 
         // 将 playerState 的变化传播到 AppState
         playerState.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
+        // 将 playbackProgress 的变化传播到 AppState
+        playbackProgress.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
     }
@@ -168,6 +185,7 @@ class AppState: ObservableObject {
     }
 }
 
+// MARK: - Audio Engine Delegate
 extension AppState: AudioEngineDelegate {
     func audioEngine(_ engine: AudioEngine, didChangeState state: PlaybackState) {
         DispatchQueue.main.async {
@@ -181,6 +199,7 @@ extension AppState: AudioEngineDelegate {
 
             // 开始播放时加载字幕并重置进度
             if state == .playing, let track = self.playlist.currentTrack {
+                self.playbackProgress.currentTime = 0
                 self.playerState.currentTime = 0
 
                 if let subtitleURL = track.audioFile.subtitleURL {
@@ -227,6 +246,8 @@ extension AppState: AudioEngineDelegate {
 
     func audioEngine(_ engine: AudioEngine, didUpdateProgress progress: TimeInterval, duration: TimeInterval) {
         DispatchQueue.main.async {
+            self.playbackProgress.currentTime = progress
+            self.playbackProgress.totalDuration = duration
             self.playerState.currentTime = progress
             self.playerState.totalDuration = duration
 

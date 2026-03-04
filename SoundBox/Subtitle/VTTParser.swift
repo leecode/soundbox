@@ -119,6 +119,12 @@ class SubtitleManager: ObservableObject {
             return
         }
 
+        // 快速检查：如果当前字幕仍然有效，直接返回
+        if let current = currentCue,
+           time >= current.startTime && time <= current.endTime {
+            return
+        }
+
         // 如果 currentIndex 越界，重置为 0
         if currentIndex >= cues.count {
             currentIndex = 0

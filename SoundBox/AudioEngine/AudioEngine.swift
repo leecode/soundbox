@@ -163,7 +163,8 @@ class AudioEngine {
     // MARK: - Progress Timer
     private func startProgressTimer() {
         stopProgressTimer()
-        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        // 降低更新频率到 0.25 秒，减少 CPU 占用
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.updateProgress()
         }
     }
