@@ -13,7 +13,86 @@ struct SoundBoxApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
+            // 移除新建菜单
             CommandGroup(replacing: .newItem) { }
+
+            // 播放控制菜单
+            CommandMenu("播放") {
+                Button("播放/暂停") {
+                    togglePlayback()
+                }
+                .keyboardShortcut(.space, modifiers: [])
+
+                Button("上一曲") {
+                    previousTrack()
+                }
+                .keyboardShortcut(.leftArrow, modifiers: .command)
+
+                Button("下一曲") {
+                    nextTrack()
+                }
+                .keyboardShortcut(.rightArrow, modifiers: .command)
+
+                Divider()
+
+                Button("循环模式") {
+                    toggleRepeatMode()
+                }
+                .keyboardShortcut("r", modifiers: .command)
+            }
+        }
+    }
+
+    private func togglePlayback() {
+        if appState.playerState.playbackState.isPlaying {
+            AudioEngine.shared.pause()
+        } else if appState.playerState.playbackState == .paused {
+            AudioEngine.shared.resume()
+        } else if let track = appState.playlist.currentTrack {
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
+    private func previousTrack() {
+        guard !appState.playlist.tracks.isEmpty else { return }
+        let newIndex: Int
+        if appState.playlist.currentIndex > 0 {
+            newIndex = appState.playlist.currentIndex - 1
+        } else if appState.playlist.repeatMode == .all {
+            newIndex = appState.playlist.tracks.count - 1
+        } else {
+            return
+        }
+        appState.playlist.selectTrack(at: newIndex)
+        if let track = appState.playlist.currentTrack {
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
+    private func nextTrack() {
+        guard !appState.playlist.tracks.isEmpty else { return }
+        let newIndex: Int
+        if appState.playlist.currentIndex < appState.playlist.tracks.count - 1 {
+            newIndex = appState.playlist.currentIndex + 1
+        } else if appState.playlist.repeatMode == .all {
+            newIndex = 0
+        } else {
+            return
+        }
+        appState.playlist.selectTrack(at: newIndex)
+        if let track = appState.playlist.currentTrack {
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
+    private func toggleRepeatMode() {
+        switch appState.playlist.repeatMode {
+        case .none:
+            appState.playlist.repeatMode = .all
+        case .all:
+            appState.playlist.repeatMode = .one
+        case .one:
+            appState.playlist.repeatMode = .none
         }
     }
 }
