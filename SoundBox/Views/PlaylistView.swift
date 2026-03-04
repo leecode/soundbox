@@ -39,7 +39,8 @@ struct PlaylistView: View {
                     ForEach(Array(appState.playlist.tracks.enumerated()), id: \.element.id) { index, track in
                         TrackRowView(track: track, index: index, isPlaying: index == appState.playlist.currentIndex)
                             .tag(index)
-                            .onTapGesture(count: 2) {
+                            .contentShape(Rectangle())
+                            .onTapGesture {
                                 playTrack(at: index)
                             }
                     }
