@@ -88,15 +88,7 @@ struct PlaylistView: View {
         panel.message = "选择包含音频文件的文件夹"
 
         if panel.runModal() == .OK {
-            for url in panel.urls {
-                let scanner = FileScanner()
-                let playlist = appState.playlist
-                scanner.scanDirectory(url) { tracks in
-                    DispatchQueue.main.async {
-                        playlist.addTracks(tracks)
-                    }
-                }
-            }
+            appState.scanAndAddFolders(panel.urls)
         }
     }
 
@@ -107,12 +99,7 @@ struct PlaylistView: View {
                    let url = URL(dataRepresentation: data, relativeTo: nil) {
                     var isDirectory: ObjCBool = false
                     if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) {
-                        let scanner = FileScanner()
-                        scanner.scanDirectory(url) { tracks in
-                            DispatchQueue.main.async {
-                                appState.playlist.addTracks(tracks)
-                            }
-                        }
+                        appState.scanAndAddFolder(url)
                     }
                 }
             }

@@ -3,89 +3,56 @@ import Foundation
 // MARK: - File Scanner
 class FileScanner {
 
-    // MARK: - Supported Audio Extensions
-    private let audioExtensions = ["wav", "flac", "aiff", "aif", "alac", "m4a", "aac", "mp3", "ogg"]
+    // MARK: - Supported Extensions
+    private var audioExtensions: [String] { LosslessDecoder.supportedExtensions }
     private let subtitleExtensions = ["vtt", "srt"]
 
     // MARK: - Scan Directory
     func scanDirectory(_ url: URL, completion: @escaping ([Track]) -> Void) {
-        print("📁 开始扫描目录: \(url.path)")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else {
+                DispatchQueue.main.async { completion([]) }
+                return
+            }
 
-        DispatchQueue.global(qos: .userInitiated).async {
             var tracks: [Track] = []
             var index = 0
 
-            // 获取目录下所有文件
             guard let enumerator = FileManager.default.enumerator(
                 at: url,
                 includingPropertiesForKeys: [.isRegularFileKey],
                 options: [.skipsHiddenFiles, .skipsPackageDescendants]
             ) else {
-                print("❌ 无法创建文件枚举器")
                 DispatchQueue.main.async { completion([]) }
                 return
             }
 
-            var audioFiles: [(URL, URL?)] = [] // (audioURL, subtitleURL)
-            var fileCount = 0
+            var audioFiles: [(URL, URL?)] = []
 
             for case let fileURL as URL in enumerator {
-                fileCount += 1
                 let ext = fileURL.pathExtension.lowercased()
 
                 if self.audioExtensions.contains(ext) {
-                    print("🎵 发现音频文件: \(fileURL.lastPathComponent)")
-                    // 查找对应的字幕文件（支持 .wav.vtt 和 .vtt 两种格式）
-                    let baseName = fileURL.deletingPathExtension().lastPathComponent
-                    let fullName = fileURL.lastPathComponent  // 包含扩展名，如 #1xxx.wav
-                    var subtitleURL: URL? = nil
-
-                    for subExt in self.subtitleExtensions {
-                        // 先尝试 完整文件名.字幕扩展名（如 #1xxx.wav.vtt）
-                        let subPath1 = fileURL.deletingLastPathComponent()
-                            .appendingPathComponent(fullName + "." + subExt)
-                        if FileManager.default.fileExists(atPath: subPath1.path) {
-                            subtitleURL = subPath1
-                            print("📝 发现字幕文件: \(subPath1.lastPathComponent)")
-                            break
-                        }
-
-                        // 再尝试 基本名.字幕扩展名（如 #1xxx.vtt）
-                        let subPath2 = fileURL.deletingLastPathComponent()
-                            .appendingPathComponent(baseName + "." + subExt)
-                        if FileManager.default.fileExists(atPath: subPath2.path) {
-                            subtitleURL = subPath2
-                            print("📝 发现字幕文件: \(subPath2.lastPathComponent)")
-                            break
-                        }
-                    }
-
+                    let subtitleURL = self.findSubtitleFile(for: fileURL)
                     audioFiles.append((fileURL, subtitleURL))
                 }
             }
 
-            print("📊 扫描完成: 共 \(fileCount) 个文件, \(audioFiles.count) 个音频文件")
-
-            // 按文件名中的编号排序（如 #1, #2, #10 等）
+            // Sort by track number in filename
             audioFiles.sort { file1, file2 in
                 let name1 = file1.0.deletingPathExtension().lastPathComponent
                 let name2 = file2.0.deletingPathExtension().lastPathComponent
                 let num1 = self.extractTrackNumber(from: name1)
                 let num2 = self.extractTrackNumber(from: name2)
 
-                // 如果都能提取到编号，按编号排序
                 if let n1 = num1, let n2 = num2 {
                     return n1 < n2
                 }
-                // 否则按文件名排序
                 return name1 < name2
             }
 
-            // 使用 DispatchGroup 同步处理每个文件
             let group = DispatchGroup()
             let syncQueue = DispatchQueue(label: "com.soundbox.scanner.sync", qos: .userInitiated)
-            var successCount = 0
-            var failCount = 0
 
             for (audioURL, subtitleURL) in audioFiles {
                 group.enter()
@@ -95,9 +62,6 @@ class FileScanner {
                     syncQueue.sync {
                         if let track = track {
                             tracks.append(track)
-                            successCount += 1
-                        } else {
-                            failCount += 1
                         }
                     }
                     group.leave()
@@ -105,12 +69,33 @@ class FileScanner {
             }
 
             group.notify(queue: .main) {
-                print("✅ 处理完成: 成功 \(successCount) 个, 失败 \(failCount) 个")
-                // 按索引排序
                 let sortedTracks = tracks.sorted { $0.index < $1.index }
                 completion(sortedTracks)
             }
         }
+    }
+
+    // MARK: - Find Subtitle File
+    private func findSubtitleFile(for audioURL: URL) -> URL? {
+        let baseName = audioURL.deletingPathExtension().lastPathComponent
+        let fullName = audioURL.lastPathComponent
+
+        for subExt in subtitleExtensions {
+            // Try full filename + extension (e.g., track.wav.vtt)
+            let subPath1 = audioURL.deletingLastPathComponent()
+                .appendingPathComponent(fullName + "." + subExt)
+            if FileManager.default.fileExists(atPath: subPath1.path) {
+                return subPath1
+            }
+
+            // Try base name (e.g., track.vtt)
+            let subPath2 = audioURL.deletingLastPathComponent()
+                .appendingPathComponent(baseName + "." + subExt)
+            if FileManager.default.fileExists(atPath: subPath2.path) {
+                return subPath2
+            }
+        }
+        return nil
     }
 
     // MARK: - Create Track
@@ -131,11 +116,9 @@ class FileScanner {
                     index: index,
                     title: url.deletingPathExtension().lastPathComponent
                 )
-                print("✅ 创建 Track 成功: \(track.title)")
                 completion(track)
 
-            case .failure(let error):
-                print("❌ 创建 Track 失败 \(url.lastPathComponent): \(error)")
+            case .failure:
                 completion(nil)
             }
         }
@@ -148,27 +131,25 @@ class FileScanner {
     }
 
     // MARK: - Extract Track Number
-    /// 从文件名提取编号，支持格式：#1, #01, 01., 01-, (01) 等
     private func extractTrackNumber(from filename: String) -> Int? {
-        // 尝试匹配 #数字 格式（如 #1, #10, #01）
+        // Match #N format (e.g., #1, #10, #01)
         let hashPattern = "#(\\d+)"
         if let range = filename.range(of: hashPattern, options: .regularExpression),
            let numberRange = Range(NSRange(range, in: filename), in: filename) {
-            let numberString = filename[numberRange].dropFirst() // 去掉 #
+            let numberString = filename[numberRange].dropFirst()
             return Int(numberString)
         }
 
-        // 尝试匹配开头的数字（如 01., 01-, 1_）
+        // Match leading digits (e.g., 01., 01-, 1_)
         let leadingPattern = "^(\\d+)[.\\-_\\s]"
         if let range = filename.range(of: leadingPattern, options: .regularExpression),
            let numberRange = Range(NSRange(range, in: filename), in: filename) {
             let numberString = filename[numberRange]
-            // 去掉末尾的分隔符
             let digits = numberString.dropLast()
             return Int(digits)
         }
 
-        // 尝试匹配括号中的数字（如 (01), [01]）
+        // Match brackets (e.g., (01), [01])
         let bracketPattern = "[\\[\\(](\\d+)[\\]\\)]"
         if let range = filename.range(of: bracketPattern, options: .regularExpression) {
             let substring = String(filename[range])

@@ -105,14 +105,9 @@ class SubtitleManager: ObservableObject {
     private var currentIndex = 0
 
     func load(from url: URL) {
-        print("📝 SubtitleManager.load 被调用: \(url.path)")
         cues = VTTParser.parse(from: url)
         currentIndex = 0
         currentCue = nil
-        print("📝 解析到 \(cues.count) 条字幕")
-        if let first = cues.first {
-            print("📝 第一条: [\(first.startTime)-\(first.endTime)] \(first.text)")
-        }
     }
 
     func update(for time: TimeInterval) {

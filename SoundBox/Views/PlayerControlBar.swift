@@ -153,7 +153,11 @@ struct PlayerControlBar: View {
     private func togglePlayback() {
         if appState.playerState.playbackState.isPlaying {
             AudioEngine.shared.pause()
+        } else if appState.playerState.playbackState == .paused {
+            // 暂停状态：继续播放
+            AudioEngine.shared.resume()
         } else {
+            // 停止状态：从头播放
             if let track = appState.playlist.currentTrack {
                 AudioEngine.shared.loadAndPlay(track.audioFile.url)
             }
@@ -161,18 +165,41 @@ struct PlayerControlBar: View {
     }
 
     private func previousTrack() {
-        if let track = appState.playlist.previousTrack {
-            appState.playlist.currentIndex -= 1
-            if appState.playlist.currentIndex < 0 {
-                appState.playlist.currentIndex = appState.playlist.tracks.count - 1
-            }
+        guard !appState.playlist.tracks.isEmpty else { return }
+
+        let tracksCount = appState.playlist.tracks.count
+        let newIndex: Int
+
+        if appState.playlist.currentIndex > 0 {
+            newIndex = appState.playlist.currentIndex - 1
+        } else if appState.playlist.repeatMode == .all {
+            newIndex = tracksCount - 1
+        } else {
+            return
+        }
+
+        appState.playlist.selectTrack(at: newIndex)
+        if let track = appState.playlist.currentTrack {
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
         }
     }
 
     private func nextTrack() {
-        if let track = appState.playlist.nextTrack {
-            appState.playlist.currentIndex = (appState.playlist.currentIndex + 1) % appState.playlist.tracks.count
+        guard !appState.playlist.tracks.isEmpty else { return }
+
+        let tracksCount = appState.playlist.tracks.count
+        let newIndex: Int
+
+        if appState.playlist.currentIndex < tracksCount - 1 {
+            newIndex = appState.playlist.currentIndex + 1
+        } else if appState.playlist.repeatMode == .all {
+            newIndex = 0
+        } else {
+            return
+        }
+
+        appState.playlist.selectTrack(at: newIndex)
+        if let track = appState.playlist.currentTrack {
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
         }
     }

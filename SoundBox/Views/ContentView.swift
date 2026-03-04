@@ -151,40 +151,14 @@ struct EmptyStateView: View {
     }
 
     private func openFolder() {
-        print("🖱️ openFolder() 被调用")
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.message = "选择包含音频文件的文件夹"
 
-        let result = panel.runModal()
-        print("🖱️ Panel result: \(result.rawValue), OK=\(NSApplication.ModalResponse.OK.rawValue)")
-
-        if result == .OK {
-            if let url = panel.url {
-                print("🖱️ 选择的文件夹: \(url.path)")
-                scanDirectory(url)
-            } else {
-                print("🖱️ 没有获取到 URL!")
-            }
-        } else {
-            print("🖱️ 用户取消了选择")
-        }
-    }
-
-    private func scanDirectory(_ url: URL) {
-        // 扫描目录并添加到播放列表
-        print("📂 scanDirectory 被调用: \(url.path)")
-        let scanner = FileScanner()
-        scanner.scanDirectory(url) { tracks in
-            print("📋 扫描完成回调执行，获取到 \(tracks.count) 个曲目")
-            DispatchQueue.main.async {
-                print("📋 准备添加曲目到播放列表...")
-                print("📋 添加前 appState.playlist.tracks.count = \(self.appState.playlist.tracks.count)")
-                self.appState.playlist.addTracks(tracks)
-                print("📋 添加后 appState.playlist.tracks.count = \(self.appState.playlist.tracks.count)")
-            }
+        if panel.runModal() == .OK {
+            appState.scanAndAddFolders(panel.urls)
         }
     }
 }

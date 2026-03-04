@@ -24,6 +24,8 @@ class AppState: ObservableObject {
     var playlist: Playlist = Playlist()
     var subtitleManager = SubtitleManager()
 
+    private let fileScanner = FileScanner()
+
     init() {
         // 初始化音频引擎
         AudioEngine.shared.delegate = self
@@ -45,6 +47,21 @@ class AppState: ObservableObject {
     }
 
     private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - Folder Scanning
+    func scanAndAddFolder(_ url: URL) {
+        fileScanner.scanDirectory(url) { [weak self] tracks in
+            DispatchQueue.main.async {
+                self?.playlist.addTracks(tracks)
+            }
+        }
+    }
+
+    func scanAndAddFolders(_ urls: [URL]) {
+        for url in urls {
+            scanAndAddFolder(url)
+        }
+    }
 }
 
 extension AppState: AudioEngineDelegate {
@@ -60,15 +77,11 @@ extension AppState: AudioEngineDelegate {
 
             // 开始播放时加载字幕并重置进度
             if state == .playing, let track = self.playlist.currentTrack {
-                // 重置进度
                 self.playerState.currentTime = 0
 
-                print("📝 检查字幕: subtitleURL = \(track.audioFile.subtitleURL?.path ?? "nil")")
                 if let subtitleURL = track.audioFile.subtitleURL {
-                    print("📝 加载字幕: \(subtitleURL.lastPathComponent)")
                     self.subtitleManager.load(from: subtitleURL)
                 } else {
-                    print("📝 当前曲目没有字幕文件")
                     self.subtitleManager.reset()
                 }
             }
@@ -86,17 +99,13 @@ extension AppState: AudioEngineDelegate {
         let nextIndex = self.playlist.currentIndex + 1
 
         if nextIndex < self.playlist.tracks.count {
-            // 还有下一曲
             self.playlist.currentIndex = nextIndex
             if let track = self.playlist.currentTrack {
-                print("▶️ 自动播放下一曲: \(track.title)")
                 AudioEngine.shared.loadAndPlay(track.audioFile.url)
             }
-        } else {
-            // 播放完毕，从头开始循环
+        } else if self.playlist.repeatMode == .all {
             self.playlist.currentIndex = 0
             if let track = self.playlist.currentTrack {
-                print("🔄 播放列表完成，从头开始: \(track.title)")
                 AudioEngine.shared.loadAndPlay(track.audioFile.url)
             }
         }
@@ -108,31 +117,23 @@ extension AppState: AudioEngineDelegate {
             self.playerState.totalDuration = duration
 
             // 更新字幕
-            let cuesCount = self.subtitleManager.cues.count
-            let isPlaying = self.playerState.playbackState == .playing
+            guard self.playerState.playbackState == .playing,
+                  self.subtitleManager.cues.count > 0 else { return }
 
-            // 每秒打印一次调试信息
-            if Int(progress) % 5 == 0 && Int(progress * 10) % 10 == 0 {
-                print("⏱️ 进度: \(String(format: "%.1f", progress))s, cues: \(cuesCount), isPlaying: \(isPlaying)")
-            }
-
-            if isPlaying && cuesCount > 0 {
-                self.subtitleManager.update(for: progress)
-                if let cue = self.subtitleManager.currentCue {
-                    if self.playerState.currentSubtitle != cue.text {
-                        self.playerState.currentSubtitle = cue.text
-                        print("📝 字幕更新: \(cue.text)")
-                    }
-                } else {
-                    if self.playerState.currentSubtitle != nil {
-                        self.playerState.currentSubtitle = nil
-                    }
+            self.subtitleManager.update(for: progress)
+            if let cue = self.subtitleManager.currentCue {
+                if self.playerState.currentSubtitle != cue.text {
+                    self.playerState.currentSubtitle = cue.text
+                }
+            } else {
+                if self.playerState.currentSubtitle != nil {
+                    self.playerState.currentSubtitle = nil
                 }
             }
         }
     }
 
     func audioEngine(_ engine: AudioEngine, didEncounterError error: Error) {
-        print("Audio Engine Error: \(error.localizedDescription)")
+        // Error handling - could show alert to user
     }
 }
