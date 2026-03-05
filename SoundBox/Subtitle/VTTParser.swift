@@ -1,10 +1,11 @@
 import Foundation
+import SwiftUI
 
 // MARK: - VTT Subtitle Parser
 class VTTParser {
 
-    // MARK: - Parse Result
-    struct SubtitleCue: Identifiable {
+    // MARK: - SubtitleCue Model
+    struct SubtitleCue: Identifiable, Equatable {
         let id: String
         let startTime: TimeInterval
         let endTime: TimeInterval
@@ -171,5 +172,51 @@ class SubtitleManager: ObservableObject {
     func reset() {
         currentIndex = 0
         currentCue = nil
+    }
+}
+
+// MARK: - Subtitle Preview Manager
+class SubtitlePreviewManager: ObservableObject {
+    @Published var items: [SubtitlePreviewItem] = []
+    @Published var isLoading: Bool = false
+
+    private var loadedTrackIds: Set<String> = []
+
+    func preloadSubtitles(for tracks: [Track]) {
+        // Reset and reload all
+        items.removeAll()
+        loadedTrackIds.removeAll()
+
+        isLoading = true
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var newItems: [SubtitlePreviewItem] = []
+
+            for (index, track) in tracks.enumerated() {
+                guard let subtitleURL = track.audioFile.subtitleURL else { continue }
+
+                let cues = VTTParser.parse(from: subtitleURL)
+
+                for cue in cues {
+                    let item = SubtitlePreviewItem(
+                        id: "\(index)-\(cue.id)",
+                        trackIndex: index,
+                        trackTitle: track.title,
+                        cue: cue
+                    )
+                    newItems.append(item)
+                }
+            }
+
+            DispatchQueue.main.async {
+                self?.items = newItems
+                self?.isLoading = false
+            }
+        }
+    }
+
+    func clear() {
+        items.removeAll()
+        loadedTrackIds.removeAll()
     }
 }

@@ -179,3 +179,11 @@ enum PlaybackState: Equatable {
         return self == .playing
     }
 }
+
+// MARK: - Subtitle Preview Item
+struct SubtitlePreviewItem: Identifiable {
+    let id: String           // "trackIndex-cueId"
+    let trackIndex: Int
+    let trackTitle: String
+    let cue: VTTParser.SubtitleCue
+}

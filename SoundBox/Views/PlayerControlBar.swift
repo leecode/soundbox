@@ -156,6 +156,21 @@ struct PlayerControlBar: View {
                 .monospacedDigit()
                 .frame(width: 100, alignment: .center)
 
+            // 字幕预览按钮
+            Button(action: {
+                withAnimation {
+                    appState.showSubtitlePanel.toggle()
+                }
+            }) {
+                Image(systemName: "text.bubble")
+                    .font(.caption)
+                    .foregroundStyle(appState.showSubtitlePanel ? Color.accentColor : .secondary)
+            }
+            .buttonStyle(.plain)
+            .help("字幕预览 (⌘S)")
+            .opacity(appState.subtitlePreviewManager.items.isEmpty ? 0.3 : 1.0)
+            .disabled(appState.subtitlePreviewManager.items.isEmpty)
+
             // 音量
             HStack(spacing: 8) {
                 Image(systemName: volumeIcon)

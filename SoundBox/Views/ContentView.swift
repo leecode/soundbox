@@ -27,6 +27,12 @@ struct ContentView: View {
                     // 分隔线
                     Divider()
 
+                    // 字幕预览面板
+                    if appState.showSubtitlePanel {
+                        SubtitlePreviewPanel()
+                        Divider()
+                    }
+
                     // 右侧：播放器主界面
                     PlayerMainView()
                 }

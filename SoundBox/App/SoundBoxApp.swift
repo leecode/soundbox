@@ -51,6 +51,15 @@ struct SoundBoxApp: App {
                     toggleRepeatMode()
                 }
                 .keyboardShortcut("r", modifiers: .command)
+
+                Divider()
+
+                Button("字幕预览") {
+                    withAnimation {
+                        appState.showSubtitlePanel.toggle()
+                    }
+                }
+                .keyboardShortcut("s", modifiers: .command)
             }
         }
     }
@@ -136,8 +145,10 @@ class PlaybackProgress: ObservableObject {
 // MARK: - App State
 class AppState: ObservableObject {
     @Published var playerState = PlayerState()
+    @Published var showSubtitlePanel: Bool = false
     var playlist: Playlist = Playlist()
     var subtitleManager = SubtitleManager()
+    var subtitlePreviewManager = SubtitlePreviewManager()
     var playbackProgress = PlaybackProgress()
 
     private let fileScanner = FileScanner()
@@ -156,6 +167,11 @@ class AppState: ObservableObject {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
 
+        // 将 subtitlePreviewManager 的变化传播到 AppState
+        subtitlePreviewManager.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
         // 将 playerState 的变化传播到 AppState
         playerState.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
@@ -164,6 +180,11 @@ class AppState: ObservableObject {
         // 将 playbackProgress 的变化传播到 AppState
         playbackProgress.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
+        // 监听 playlist 变化自动预加载字幕
+        playlist.$tracks.sink { [weak self] tracks in
+            self?.subtitlePreviewManager.preloadSubtitles(for: tracks)
         }.store(in: &cancellables)
     }
 
@@ -181,6 +202,22 @@ class AppState: ObservableObject {
     func scanAndAddFolders(_ urls: [URL]) {
         for url in urls {
             scanAndAddFolder(url)
+        }
+    }
+
+    // MARK: - Play from Subtitle
+    func playFromSubtitle(_ item: SubtitlePreviewItem) {
+        // 1. 切换到对应 track
+        playlist.selectTrack(at: item.trackIndex)
+
+        // 2. 加载并播放
+        if let track = playlist.currentTrack {
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+
+            // 3. 跳转到字幕时间点
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                AudioEngine.shared.seek(to: item.cue.startTime)
+            }
         }
     }
 }
