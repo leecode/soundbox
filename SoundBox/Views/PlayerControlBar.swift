@@ -7,7 +7,7 @@ struct PlayerControlBar: View {
     @State private var sliderValue: Double = 0
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
             // 进度条
             ProgressSlider(
                 value: $sliderValue,
@@ -25,7 +25,7 @@ struct PlayerControlBar: View {
                 }
             }
 
-            HStack(spacing: 24) {
+            HStack(alignment: .center, spacing: 24) {
                 // 左侧：当前曲目信息
                 currentTrackInfo
                     .frame(width: 200, alignment: .leading)
@@ -34,6 +34,7 @@ struct PlayerControlBar: View {
 
                 // 中间：播放控制
                 playbackControls
+                    .frame(maxHeight: .infinity)
 
                 Spacer()
 
@@ -41,7 +42,11 @@ struct PlayerControlBar: View {
                 timeAndVolume
                     .frame(width: 200, alignment: .trailing)
             }
+            .frame(maxHeight: .infinity)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
         }
+        .frame(maxHeight: .infinity)
         .padding(.horizontal, 24)
     }
 
@@ -84,6 +89,7 @@ struct PlayerControlBar: View {
                     .font(.title3)
             }
             .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
             .disabled(appState.playlist.tracks.isEmpty)
 
             // 播放/暂停
@@ -100,6 +106,7 @@ struct PlayerControlBar: View {
                 }
             }
             .buttonStyle(.plain)
+            .offset(y: -2)
             .disabled(appState.playlist.tracks.isEmpty)
 
             // 下一曲
@@ -108,6 +115,7 @@ struct PlayerControlBar: View {
                     .font(.title3)
             }
             .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
             .disabled(appState.playlist.tracks.isEmpty)
 
             // 循环模式
@@ -117,6 +125,7 @@ struct PlayerControlBar: View {
                     .foregroundColor(appState.playlist.repeatMode == .none ? .secondary : .accentColor)
             }
             .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
             .help(repeatModeHelpText)
         }
     }
