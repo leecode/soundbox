@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayerControlBar: View {
     @EnvironmentObject var appState: AppState
+    @ObservedObject var playerState: PlayerState
     @State private var isDraggingSlider = false
     @State private var sliderValue: Double = 0
 
@@ -10,6 +11,7 @@ struct PlayerControlBar: View {
             // 进度条
             ProgressSlider(
                 value: $sliderValue,
+                totalDuration: playerState.totalDuration,
                 onEditingChanged: { editing in
                     isDraggingSlider = editing
                     if !editing {
@@ -17,7 +19,7 @@ struct PlayerControlBar: View {
                     }
                 }
             )
-            .onChange(of: appState.playerState.currentTime) { oldValue, newValue in
+            .onChange(of: playerState.currentTime) { oldValue, newValue in
                 if !isDraggingSlider {
                     sliderValue = newValue
                 }
@@ -91,10 +93,10 @@ struct PlayerControlBar: View {
                         .fill(Color.accentColor)
                         .frame(width: 48, height: 48)
 
-                    Image(systemName: appState.playerState.playbackState.isPlaying ? "pause.fill" : "play.fill")
+                    Image(systemName: playerState.playbackState.isPlaying ? "pause.fill" : "play.fill")
                         .font(.title2)
                         .foregroundColor(.white)
-                        .offset(x: appState.playerState.playbackState.isPlaying ? 0 : 2)
+                        .offset(x: playerState.playbackState.isPlaying ? 0 : 2)
                 }
             }
             .buttonStyle(.plain)
@@ -150,7 +152,7 @@ struct PlayerControlBar: View {
     private var timeAndVolume: some View {
         HStack(spacing: 16) {
             // 时间显示
-            Text("\(formatTime(appState.playerState.currentTime)) / \(formatTime(appState.playerState.totalDuration))")
+            Text("\(formatTime(playerState.currentTime)) / \(formatTime(playerState.totalDuration))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
@@ -178,9 +180,9 @@ struct PlayerControlBar: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 16)
 
-                Slider(value: $appState.playerState.volume, in: 0...1)
+                Slider(value: $playerState.volume, in: 0...1)
                     .frame(width: 80)
-                    .onChange(of: appState.playerState.volume) { oldValue, newValue in
+                    .onChange(of: playerState.volume) { oldValue, newValue in
                         AudioEngine.shared.setVolume(Float(newValue))
                     }
             }
@@ -188,7 +190,7 @@ struct PlayerControlBar: View {
     }
 
     private var volumeIcon: String {
-        let volume = appState.playerState.volume
+        let volume = playerState.volume
         if volume == 0 { return "speaker.slash.fill" }
         if volume < 0.33 { return "speaker.wave.1.fill" }
         if volume < 0.66 { return "speaker.wave.2.fill" }
@@ -202,9 +204,9 @@ struct PlayerControlBar: View {
     }
 
     private func togglePlayback() {
-        if appState.playerState.playbackState.isPlaying {
+        if playerState.playbackState.isPlaying {
             AudioEngine.shared.pause()
-        } else if appState.playerState.playbackState == .paused {
+        } else if playerState.playbackState == .paused {
             // 暂停状态：继续播放
             AudioEngine.shared.resume()
         } else {
@@ -259,13 +261,13 @@ struct PlayerControlBar: View {
 // MARK: - Progress Slider
 struct ProgressSlider: View {
     @Binding var value: Double
+    let totalDuration: Double
     let onEditingChanged: (Bool) -> Void
 
-    @EnvironmentObject var appState: AppState
     @State private var isDragging = false
 
     private var range: ClosedRange<Double> {
-        0...max(appState.playerState.totalDuration, 1)
+        0...max(totalDuration, 1)
     }
 
     var body: some View {

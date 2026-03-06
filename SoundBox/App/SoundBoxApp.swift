@@ -172,15 +172,8 @@ class AppState: ObservableObject {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
 
-        // 将 playerState 的变化传播到 AppState
-        playerState.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }.store(in: &cancellables)
-
-        // 将 playbackProgress 的变化传播到 AppState
-        playbackProgress.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }.store(in: &cancellables)
+        // 注意：不传播 playerState 和 playbackProgress 的高频更新
+        // 需要这些更新的视图应直接观察 playerState
 
         // 监听 playlist 变化自动预加载字幕
         playlist.$tracks.sink { [weak self] tracks in

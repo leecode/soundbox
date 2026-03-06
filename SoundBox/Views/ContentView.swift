@@ -29,7 +29,13 @@ struct ContentView: View {
 
                     // 字幕预览面板
                     if appState.showSubtitlePanel {
-                        SubtitlePreviewPanel()
+                        SubtitlePreviewPanel(
+                            subtitleManager: appState.subtitleManager,
+                            subtitlePreviewManager: appState.subtitlePreviewManager,
+                            currentTrackIndex: appState.playlist.currentIndex,
+                            onClose: { appState.showSubtitlePanel = false },
+                            onSelectSubtitle: { appState.playFromSubtitle($0) }
+                        )
                         Divider()
                     }
 
@@ -38,7 +44,7 @@ struct ContentView: View {
                 }
 
                 // 底部：播放控制栏
-                PlayerControlBar()
+                PlayerControlBar(playerState: appState.playerState)
                     .frame(height: 80)
                     .background(Color(nsColor: .windowBackgroundColor))
             }

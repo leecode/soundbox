@@ -1,14 +1,19 @@
 import SwiftUI
 
 struct SubtitlePreviewPanel: View {
-    @EnvironmentObject var appState: AppState
+    @ObservedObject var subtitleManager: SubtitleManager
+    @ObservedObject var subtitlePreviewManager: SubtitlePreviewManager
+    let currentTrackIndex: Int
+    let onClose: () -> Void
+    let onSelectSubtitle: (SubtitlePreviewItem) -> Void
+
     @State private var searchText: String = ""
 
     var filteredItems: [SubtitlePreviewItem] {
         if searchText.isEmpty {
-            return appState.subtitlePreviewManager.items
+            return subtitlePreviewManager.items
         }
-        return appState.subtitlePreviewManager.items.filter { item in
+        return subtitlePreviewManager.items.filter { item in
             item.cue.text.localizedCaseInsensitiveContains(searchText) ||
             item.trackTitle.localizedCaseInsensitiveContains(searchText)
         }
@@ -23,8 +28,8 @@ struct SubtitlePreviewPanel: View {
 
                 Spacer()
 
-                if !appState.subtitlePreviewManager.items.isEmpty {
-                    Text("\(appState.subtitlePreviewManager.items.count)")
+                if !subtitlePreviewManager.items.isEmpty {
+                    Text("\(subtitlePreviewManager.items.count)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
@@ -35,7 +40,7 @@ struct SubtitlePreviewPanel: View {
 
                 Button(action: {
                     withAnimation {
-                        appState.showSubtitlePanel = false
+                        onClose()
                     }
                 }) {
                     Image(systemName: "xmark.circle.fill")
@@ -75,7 +80,7 @@ struct SubtitlePreviewPanel: View {
             Divider()
 
             // Content
-            if appState.subtitlePreviewManager.isLoading {
+            if subtitlePreviewManager.isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
                         .scaleEffect(0.8)
@@ -113,15 +118,15 @@ struct SubtitlePreviewPanel: View {
                             SubtitleItemRow(item: item, isActive: isItemActive(item))
                                 .contentShape(Rectangle())
                                 .onTapGesture {
-                                    appState.playFromSubtitle(item)
+                                    onSelectSubtitle(item)
                                 }
                                 .id(item.id)
                         }
                     }
                     .listStyle(.plain)
-                    .onChange(of: appState.subtitleManager.currentCue) { oldValue, newValue in
+                    .onChange(of: subtitleManager.currentCue) { oldValue, newValue in
                         if let cue = newValue {
-                            let itemId = "\(appState.playlist.currentIndex)-\(cue.id)"
+                            let itemId = "\(currentTrackIndex)-\(cue.id)"
                             withAnimation {
                                 proxy.scrollTo(itemId, anchor: .center)
                             }
@@ -135,8 +140,8 @@ struct SubtitlePreviewPanel: View {
     }
 
     private func isItemActive(_ item: SubtitlePreviewItem) -> Bool {
-        guard let currentCue = appState.subtitleManager.currentCue,
-              item.trackIndex == appState.playlist.currentIndex else {
+        guard let currentCue = subtitleManager.currentCue,
+              item.trackIndex == currentTrackIndex else {
             return false
         }
         return currentCue.id == item.cue.id
@@ -189,7 +194,13 @@ struct SubtitleItemRow: View {
 }
 
 #Preview {
-    SubtitlePreviewPanel()
-        .environmentObject(AppState())
-        .frame(height: 600)
+    let appState = AppState()
+    return SubtitlePreviewPanel(
+        subtitleManager: appState.subtitleManager,
+        subtitlePreviewManager: appState.subtitlePreviewManager,
+        currentTrackIndex: 0,
+        onClose: {},
+        onSelectSubtitle: { _ in }
+    )
+    .frame(height: 600)
 }
