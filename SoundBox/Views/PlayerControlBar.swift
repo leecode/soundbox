@@ -265,29 +265,77 @@ struct ProgressSlider: View {
     let onEditingChanged: (Bool) -> Void
 
     @State private var isDragging = false
+    @State private var isHovering = false
+    @State private var hoverLocation: CGFloat = 0
 
     private var range: ClosedRange<Double> {
         0...max(totalDuration, 1)
     }
 
+    private var progress: CGFloat {
+        CGFloat((value - range.lowerBound) / (range.upperBound - range.lowerBound))
+    }
+
+    private var hoverTime: Double {
+        let ratio = Double(hoverLocation)
+        return range.lowerBound + ratio * (range.upperBound - range.lowerBound)
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
+                // 扩大点击区域
+                Color.clear
+                    .frame(height: 24)
+                    .contentShape(Rectangle())
+
                 // 背景轨道
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: isHovering || isDragging ? 3 : 2)
                     .fill(Color.secondary.opacity(0.3))
-                    .frame(height: 4)
+                    .frame(height: isHovering || isDragging ? 6 : 4)
 
                 // 已播放进度
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: isHovering || isDragging ? 3 : 2)
                     .fill(Color.accentColor)
-                    .frame(width: geometry.size.width * CGFloat((value - range.lowerBound) / (range.upperBound - range.lowerBound)), height: 4)
+                    .frame(width: geometry.size.width * progress, height: isHovering || isDragging ? 6 : 4)
+
+                // 悬停时显示预览线
+                if isHovering && !isDragging {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.3))
+                        .frame(width: 1, height: 10)
+                        .offset(x: geometry.size.width * hoverLocation - 0.5)
+
+                    // 时间预览气泡
+                    Text(formatTime(hoverTime))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.black.opacity(0.75))
+                        .cornerRadius(4)
+                        .offset(
+                            x: min(max(geometry.size.width * hoverLocation - 20, 0), geometry.size.width - 40),
+                            y: -20
+                        )
+                }
+
+                // 拖拽手柄
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: isDragging ? 14 : (isHovering ? 12 : 0), height: isDragging ? 14 : (isHovering ? 12 : 0))
+                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                    .offset(x: geometry.size.width * progress - (isDragging ? 7 : (isHovering ? 6 : 0)))
+                    .opacity(isHovering || isDragging ? 1 : 0)
             }
+            .frame(maxHeight: .infinity)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
-                        isDragging = true
-                        onEditingChanged(true)
+                        if !isDragging {
+                            isDragging = true
+                            onEditingChanged(true)
+                        }
                         let ratio = Double(gesture.location.x / geometry.size.width)
                         let newValue = range.lowerBound + ratio * (range.upperBound - range.lowerBound)
                         value = max(range.lowerBound, min(range.upperBound, newValue))
@@ -297,7 +345,22 @@ struct ProgressSlider: View {
                         onEditingChanged(false)
                     }
             )
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    isHovering = true
+                    hoverLocation = location.x / geometry.size.width
+                case .ended:
+                    isHovering = false
+                }
+            }
         }
-        .frame(height: 12)
+        .frame(height: 24)
+    }
+
+    private func formatTime(_ time: Double) -> String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
