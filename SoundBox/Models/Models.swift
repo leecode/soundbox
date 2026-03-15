@@ -187,3 +187,78 @@ struct SubtitlePreviewItem: Identifiable {
     let trackTitle: String
     let cue: VTTParser.SubtitleCue
 }
+
+// MARK: - Folder History Item
+struct FolderHistoryItem: Identifiable, Codable, Equatable {
+    let id: UUID
+    let url: URL
+    let name: String
+    let lastOpenedAt: Date
+
+    init(url: URL) {
+        self.id = UUID()
+        self.url = url
+        self.name = url.lastPathComponent
+        self.lastOpenedAt = Date()
+    }
+
+    static func == (lhs: FolderHistoryItem, rhs: FolderHistoryItem) -> Bool {
+        lhs.url == rhs.url
+    }
+}
+
+// MARK: - Folder History Manager
+class FolderHistoryManager: ObservableObject {
+    @Published var items: [FolderHistoryItem] = []
+
+    private let maxItems = 10
+    private let userDefaultsKey = "folderHistory"
+
+    init() {
+        load()
+    }
+
+    func add(_ url: URL) {
+        // 移除已存在的相同路径
+        items.removeAll { $0.url == url }
+
+        // 添加到开头
+        let newItem = FolderHistoryItem(url: url)
+        items.insert(newItem, at: 0)
+
+        // 限制数量
+        if items.count > maxItems {
+            items = Array(items.prefix(maxItems))
+        }
+
+        save()
+    }
+
+    func remove(_ item: FolderHistoryItem) {
+        items.removeAll { $0.id == item.id }
+        save()
+    }
+
+    func clear() {
+        items.removeAll()
+        save()
+    }
+
+    func itemExists(at url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: url.path)
+    }
+
+    private func save() {
+        if let data = try? JSONEncoder().encode(items) {
+            UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        }
+    }
+
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
+              let decoded = try? JSONDecoder().decode([FolderHistoryItem].self, from: data) else {
+            return
+        }
+        items = decoded
+    }
+}

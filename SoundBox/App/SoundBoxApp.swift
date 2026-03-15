@@ -9,12 +9,36 @@ struct SoundBoxApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
-                .frame(minWidth: 900, minHeight: 600)
+                .frame(minWidth: 900, minHeight: 680)
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
-            // 移除新建菜单
-            CommandGroup(replacing: .newItem) { }
+            // 替换新建菜单为打开文件夹
+            CommandGroup(replacing: .newItem) {
+                Button("打开文件夹...") {
+                    openFolderPicker()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+
+                // 最近打开的文件夹
+                if !appState.folderHistoryManager.items.isEmpty {
+                    Divider()
+
+                    Menu("最近打开") {
+                        ForEach(appState.folderHistoryManager.items) { item in
+                            Button(item.name) {
+                                openFolderFromHistory(item)
+                            }
+                        }
+
+                        Divider()
+
+                        Button("清除历史") {
+                            appState.folderHistoryManager.clear()
+                        }
+                    }
+                }
+            }
 
             // 播放控制菜单
             CommandMenu("播放") {
@@ -129,6 +153,30 @@ struct SoundBoxApp: App {
         let newTime = min(duration, currentTime + 5)
         AudioEngine.shared.seek(to: newTime)
     }
+
+    // MARK: - Folder Operations
+    private func openFolderPicker() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.message = "选择包含音频文件的文件夹"
+
+        if panel.runModal() == .OK {
+            appState.scanAndAddFolders(panel.urls)
+        }
+    }
+
+    private func openFolderFromHistory(_ item: FolderHistoryItem) {
+        guard appState.folderHistoryManager.itemExists(at: item.url) else {
+            // 文件夹不存在，从历史中移除
+            appState.folderHistoryManager.remove(item)
+            return
+        }
+
+        // scanAndAddFolder 会自动更新历史
+        appState.scanAndAddFolder(item.url)
+    }
 }
 
 // MARK: - Playback Progress
@@ -150,6 +198,7 @@ class AppState: ObservableObject {
     var subtitleManager = SubtitleManager()
     var subtitlePreviewManager = SubtitlePreviewManager()
     var playbackProgress = PlaybackProgress()
+    var folderHistoryManager = FolderHistoryManager()
 
     private let fileScanner = FileScanner()
 
@@ -185,6 +234,9 @@ class AppState: ObservableObject {
 
     // MARK: - Folder Scanning
     func scanAndAddFolder(_ url: URL) {
+        // 记录到历史
+        folderHistoryManager.add(url)
+
         fileScanner.scanDirectory(url) { [weak self] tracks in
             DispatchQueue.main.async {
                 self?.playlist.addTracks(tracks)
