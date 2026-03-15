@@ -1,42 +1,41 @@
-# SoundBox - 高保真音频播放器
+# SoundBox
 
-一款专为音声作品设计的 macOS 高保真音频播放器，支持 Bit-Perfect 输出。
+专为 DLsite 同人音声设计的 macOS 音频播放器，支持字幕显示和便捷的播放列表管理。
 
 ## 功能特性
 
-- **Bit-Perfect 输出** - 绕过系统混音器，直接输出原始音频数据
-- **Integer Mode** - 支持 DAC 原生整数格式，避免浮点转换
-- **Hi-Res 支持** - 支持 24-bit/96kHz 及以上高解析度音频
-- **多格式支持** - WAV, FLAC, AIFF, ALAC, MP3, AAC, OGG
-- **VTT 字幕** - 自动加载并同步显示 VTT 格式字幕
-- **播放列表** - 支持文件夹导入、拖放排序
-- **内存播放** - 音频预加载到内存，减少磁盘干扰
+- **多格式支持** - WAV, FLAC, AIFF, ALAC, MP3, AAC, OGG 等常见音频格式
+- **VTT 字幕** - 自动加载并同步显示 VTT 格式字幕，支持字幕预览面板
+- **播放列表管理** - 支持文件夹导入、拖放排序
+- **文件夹历史** - 记录最近打开的文件夹，快速访问收藏内容
+- **播放控制** - 上一曲/下一曲、播放/暂停、循环模式（关闭/单曲/列表）
+- **音量控制** - 精确的音量调节和静音切换
+- **进度控制** - 可视化进度条，支持拖拽跳转和时间预览
+- **Bit-Perfect 输出** - 绕过系统混音器，直接输出原始音频数据（开发中）
 
 ## 系统要求
 
 - macOS 14.0+
 - Xcode 15.0+
-- Swift 5.9+
 
 ## 构建方法
 
-### 方法一：使用 Xcode（推荐）
-
-1. 打开 Xcode
-2. 选择 File → New → Project
-3. 选择 macOS → App
-4. 产品名称输入 `SoundBox`
-5. 界面选择 `SwiftUI`，语言选择 `Swift`
-6. 选择保存位置（覆盖此目录）
-7. 将 SoundBox 目录下的源文件添加到项目中
-8. 构建运行 (⌘R)
-
-### 方法二：使用命令行
-
+1. 克隆仓库
 ```bash
-cd /Users/leecode/ai-workspaces/SoundBox
-swift build
-swift run SoundBox
+git clone https://github.com/yourusername/SoundBox.git
+cd SoundBox
+```
+
+2. 使用 Xcode 打开项目
+```bash
+open SoundBox.xcodeproj
+```
+
+3. 构建并运行 (⌘R)
+
+或者使用命令行构建：
+```bash
+xcodebuild -project SoundBox.xcodeproj -scheme SoundBox build
 ```
 
 ## 项目结构
@@ -44,57 +43,54 @@ swift run SoundBox
 ```
 SoundBox/
 ├── App/
-│   └── SoundBoxApp.swift          # 应用入口
+│   └── SoundBoxApp.swift          # 应用入口和菜单
 ├── Models/
-│   └── Models.swift               # 数据模型
+│   └── Models.swift               # 数据模型（播放列表、历史记录等）
 ├── Views/
 │   ├── ContentView.swift          # 主视图
-│   ├── PlaylistView.swift         # 播放列表
-│   ├── PlayerControlBar.swift     # 播放控制
-│   └── SubtitleView.swift         # 字幕显示
+│   ├── PlaylistView.swift         # 播放列表侧边栏
+│   ├── PlayerControlBar.swift     # 播放控制栏
+│   ├── SubtitleView.swift         # 字幕显示视图
+│   └── SubtitlePreviewPanel.swift # 字幕预览面板
 ├── AudioEngine/
 │   └── AudioEngine.swift          # 核心音频引擎
 ├── Decoder/
-│   └── LosslessDecoder.swift      # 音频解码器
+│   └── LosslessDecoder.swift      # 无损音频解码器
 ├── Subtitle/
-│   └── VTTParser.swift            # VTT字幕解析
-├── Utils/
-│   └── FileScanner.swift          # 文件扫描
-└── Resources/
-    └── Info.plist                 # 应用配置
+│   └── VTTParser.swift            # VTT 字幕解析器
+└── Utils/
+    └── FileScanner.swift          # 文件夹扫描工具
 ```
 
-## 音频引擎架构
+## 快捷键
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Bit-Perfect 播放链路                      │
-│                                                             │
-│  [音频文件] → [AVAudioFile] → [原始PCM] → [AUHAL] → [DAC]    │
-│                  ↓              ↓              ↓            │
-│              保持原始格式     环形缓冲区     独占访问          │
-└─────────────────────────────────────────────────────────────┘
-```
+- ⌘O - 打开文件夹
+- ⌘S - 切换字幕预览面板
+- ␣ (空格) - 播放/暂停
+- ← → - 快退/快进 5 秒
 
-## 使用的外部 DAC 推荐
+## 使用方法
 
-为了获得最佳音质体验，建议使用外部 USB DAC：
-
-- AudioQuest DragonFly
-- iFi audio hip-dac
-- FiiO K3
-- Chord Mojo
+1. 点击菜单栏 "文件" → "打开文件夹..." (⌘O) 选择包含音频文件的文件夹
+2. 从播放列表中选择要播放的音声文件
+3. 使用底部控制栏进行播放控制：
+   - ⏮ ⏸ ▶️ ⏭ - 播放控制
+   - 🔁 - 循环模式切换（关闭/单曲/列表）
+   - 📊 - 进度条拖拽跳转
+   - 🔊 - 音量调节
+4. 点击字幕按钮 (⌘S) 打开字幕预览面板
 
 ## 开发路线
 
 - [x] 基础播放功能
-- [x] VTT 字幕同步
-- [ ] Integer Mode 完整实现
-- [ ] 自动采样率切换
-- [ ] 无缝播放
+- [x] VTT 字幕同步显示
+- [x] 播放列表管理
+- [x] 文件夹历史记录
+- [x] 循环模式（关闭/单曲/列表）
+- [x] 进度条时间预览
+- [ ] 媒体键支持（播放/暂停/上下曲）
 - [ ] 睡眠定时器
-- [ ] 均衡器
-- [ ] 媒体键支持
+- [ ] 播放速度调节
 
 ## 许可证
 
