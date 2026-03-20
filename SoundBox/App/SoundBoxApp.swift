@@ -333,7 +333,10 @@ extension AppState: AudioEngineDelegate {
             self.playerState.currentTime = progress
             self.playerState.totalDuration = duration
 
-            // 更新字幕
+            // 更新字幕列表高亮（始终高亮离当前时间最近的字幕）
+            self.subtitlePreviewManager.updateActiveItem(for: progress, currentTrackIndex: self.playlist.currentIndex)
+
+            // 更新字幕显示
             guard self.playerState.playbackState == .playing,
                   self.subtitleManager.cues.count > 0 else { return }
 

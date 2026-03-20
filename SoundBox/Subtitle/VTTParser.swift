@@ -179,18 +179,26 @@ class SubtitleManager: ObservableObject {
 class SubtitlePreviewManager: ObservableObject {
     @Published var items: [SubtitlePreviewItem] = []
     @Published var isLoading: Bool = false
+    @Published var activeItemId: String? = nil
 
     private var loadedTrackIds: Set<String> = []
+
+    // 索引优化：按 trackIndex 分组的字幕索引
+    private var trackIndexMap: [Int: [Int]] = [:]  // trackIndex -> items中的索引数组
+    private var lastUpdateTime: TimeInterval = 0
+    private var updateThrottle: TimeInterval = 0.5  // 每0.5秒最多更新一次
 
     func preloadSubtitles(for tracks: [Track]) {
         // Reset and reload all
         items.removeAll()
         loadedTrackIds.removeAll()
+        trackIndexMap.removeAll()
 
         isLoading = true
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var newItems: [SubtitlePreviewItem] = []
+            var newTrackIndexMap: [Int: [Int]] = [:]
 
             for (index, track) in tracks.enumerated() {
                 guard let subtitleURL = track.audioFile.subtitleURL else { continue }
@@ -204,19 +212,62 @@ class SubtitlePreviewManager: ObservableObject {
                         trackTitle: track.title,
                         cue: cue
                     )
+                    newTrackIndexMap[index, default: []].append(newItems.count)
                     newItems.append(item)
                 }
             }
 
             DispatchQueue.main.async {
                 self?.items = newItems
+                self?.trackIndexMap = newTrackIndexMap
                 self?.isLoading = false
             }
+        }
+    }
+
+    /// 找到离当前播放时间最近的字幕并高亮（带节流优化）
+    func updateActiveItem(for currentTime: TimeInterval, currentTrackIndex: Int) {
+        // 节流：检查距离上次更新是否足够
+        let now = currentTime
+        if now - lastUpdateTime < updateThrottle {
+            return
+        }
+
+        guard let indices = trackIndexMap[currentTrackIndex], !indices.isEmpty else {
+            if activeItemId != nil {
+                activeItemId = nil
+            }
+            return
+        }
+
+        // 使用索引优化，只遍历当前曲目的字幕
+        var closestItem: SubtitlePreviewItem?
+        var closestDistance: TimeInterval = .infinity
+
+        for index in indices {
+            let item = items[index]
+            // 计算到字幕中心的距离
+            let cueCenter = (item.cue.startTime + item.cue.endTime) / 2
+            let distance = abs(cueCenter - currentTime)
+
+            if distance < closestDistance {
+                closestDistance = distance
+                closestItem = item
+            }
+        }
+
+        let newActiveId = closestItem?.id
+        if newActiveId != activeItemId {
+            activeItemId = newActiveId
+            lastUpdateTime = now
         }
     }
 
     func clear() {
         items.removeAll()
         loadedTrackIds.removeAll()
+        trackIndexMap.removeAll()
+        activeItemId = nil
+        lastUpdateTime = 0
     }
 }

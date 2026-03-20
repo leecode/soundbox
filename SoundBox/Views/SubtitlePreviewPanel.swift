@@ -124,13 +124,8 @@ struct SubtitlePreviewPanel: View {
                         }
                     }
                     .listStyle(.plain)
-                    .onChange(of: subtitleManager.currentCue) { oldValue, newValue in
-                        if let cue = newValue {
-                            let itemId = "\(currentTrackIndex)-\(cue.id)"
-                            withAnimation {
-                                proxy.scrollTo(itemId, anchor: .center)
-                            }
-                        }
+                    .onChange(of: subtitlePreviewManager.activeItemId) { oldValue, newValue in
+                        scrollToActiveItem(proxy: proxy)
                     }
                 }
             }
@@ -140,11 +135,15 @@ struct SubtitlePreviewPanel: View {
     }
 
     private func isItemActive(_ item: SubtitlePreviewItem) -> Bool {
-        guard let currentCue = subtitleManager.currentCue,
-              item.trackIndex == currentTrackIndex else {
-            return false
+        return subtitlePreviewManager.activeItemId == item.id
+    }
+
+    private func scrollToActiveItem(proxy: ScrollViewProxy) {
+        if let itemId = subtitlePreviewManager.activeItemId {
+            withAnimation {
+                proxy.scrollTo(itemId, anchor: .center)
+            }
         }
-        return currentCue.id == item.cue.id
     }
 }
 
