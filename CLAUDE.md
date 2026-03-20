@@ -20,7 +20,7 @@ xcodebuild -project SoundBox.xcodeproj -scheme SoundBox build
 
 ## Architecture Overview
 
-SoundBox uses a singleton-based architecture with a central `AppState` that coordinates all subsystems:
+SoundBox uses a central `AppState` (created via `@StateObject`) that coordinates all subsystems:
 
 ```
 SoundBoxApp (App Entry)
