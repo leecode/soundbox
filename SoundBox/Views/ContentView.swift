@@ -81,21 +81,31 @@ struct CurrentTrackView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // 封面占位（可以显示专辑封面）
-            RoundedRectangle(cornerRadius: 12)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.accentColor.opacity(0.3), Color.accentColor.opacity(0.1)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 200, height: 200)
-                .overlay {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 60))
-                        .foregroundStyle(.secondary)
+            // 封面图或波形占位
+            Group {
+                if let artworkURL = track.audioFile.artworkURL,
+                   let nsImage = NSImage(contentsOf: artworkURL) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.accentColor.opacity(0.3), Color.accentColor.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay {
+                            Image(systemName: "waveform")
+                                .font(.system(size: 60))
+                                .foregroundStyle(.secondary)
+                        }
                 }
+            }
+            .frame(width: 200, height: 200)
 
             // 音频格式信息
             HStack(spacing: 8) {
