@@ -51,6 +51,8 @@ class FileScanner {
                 return name1 < name2
             }
 
+            let artworkURL = self.findArtworkFile(in: url)
+
             let group = DispatchGroup()
             let syncQueue = DispatchQueue(label: "com.soundbox.scanner.sync", qos: .userInitiated)
 
@@ -58,7 +60,7 @@ class FileScanner {
                 group.enter()
                 let currentIndex = index
                 index += 1
-                self.createTrack(from: audioURL, subtitleURL: subtitleURL, index: currentIndex) { track in
+                self.createTrack(from: audioURL, subtitleURL: subtitleURL, artworkURL: artworkURL, index: currentIndex) { track in
                     syncQueue.sync {
                         if let track = track {
                             tracks.append(track)
@@ -73,6 +75,30 @@ class FileScanner {
                 completion(sortedTracks)
             }
         }
+    }
+
+    // MARK: - Find Artwork File
+    private func findArtworkFile(in directory: URL) -> URL? {
+        let artworkNames = ["cover", "folder", "album"]
+        let artworkExtensions = ["jpg", "jpeg", "png", "webp"]
+
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: .skipsHiddenFiles
+        )) ?? []
+
+        for name in artworkNames {
+            for ext in artworkExtensions {
+                if let match = files.first(where: {
+                    $0.deletingPathExtension().lastPathComponent.lowercased() == name &&
+                    $0.pathExtension.lowercased() == ext
+                }) {
+                    return match
+                }
+            }
+        }
+        return nil
     }
 
     // MARK: - Find Subtitle File
@@ -99,7 +125,7 @@ class FileScanner {
     }
 
     // MARK: - Create Track
-    private func createTrack(from url: URL, subtitleURL: URL?, index: Int, completion: @escaping (Track?) -> Void) {
+    private func createTrack(from url: URL, subtitleURL: URL?, artworkURL: URL?, index: Int, completion: @escaping (Track?) -> Void) {
         let decoder = LosslessDecoder()
         decoder.getAudioInfo(url) { result in
             switch result {
@@ -108,7 +134,8 @@ class FileScanner {
                     url: url,
                     format: info.audioFormat,
                     duration: info.duration,
-                    subtitleURL: subtitleURL
+                    subtitleURL: subtitleURL,
+                    artworkURL: artworkURL
                 )
 
                 let track = Track(
