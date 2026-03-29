@@ -32,14 +32,16 @@ struct AudioFile: Identifiable, Hashable {
     let duration: TimeInterval
     let fileSize: UInt64
     let subtitleURL: URL?
+    let artworkURL: URL?
 
-    init(url: URL, format: AudioFormat = .cdQuality, duration: TimeInterval = 0, subtitleURL: URL? = nil) {
+    init(url: URL, format: AudioFormat = .cdQuality, duration: TimeInterval = 0, subtitleURL: URL? = nil, artworkURL: URL? = nil) {
         self.url = url
         self.name = url.deletingPathExtension().lastPathComponent
         self.format = format
         self.duration = duration
         self.fileSize = UInt64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         self.subtitleURL = subtitleURL
+        self.artworkURL = artworkURL
     }
 
     // Explicit Hashable conformance - hash by URL only
