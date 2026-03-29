@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import MediaPlayer
 
 @main
 struct SoundBoxApp: App {
@@ -202,9 +203,90 @@ class AppState: ObservableObject {
 
     private let fileScanner = FileScanner()
 
+    // MARK: - Media Key Support
+    private var commandCenter: MPRemoteCommandCenter?
+
+    private func setupMediaKeys() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        self.commandCenter = commandCenter
+
+        commandCenter.playCommand.addTarget { [weak self] _ in
+            guard let self = self else { return .commandFailed }
+            DispatchQueue.main.async {
+                if self.playerState.playbackState == .paused {
+                    AudioEngine.shared.resume()
+                } else if let track = self.playlist.currentTrack {
+                    AudioEngine.shared.loadAndPlay(track.audioFile.url)
+                }
+            }
+            return .success
+        }
+
+        commandCenter.pauseCommand.addTarget { [weak self] _ in
+            guard let self = self else { return .commandFailed }
+            DispatchQueue.main.async {
+                if self.playerState.playbackState.isPlaying {
+                    AudioEngine.shared.pause()
+                }
+            }
+            return .success
+        }
+
+        commandCenter.nextTrackCommand.addTarget { [weak self] _ in
+            guard let self = self else { return .commandFailed }
+            DispatchQueue.main.async {
+                self.playNextTrackMediaKey()
+            }
+            return .success
+        }
+
+        commandCenter.previousTrackCommand.addTarget { [weak self] _ in
+            guard let self = self else { return .commandFailed }
+            DispatchQueue.main.async {
+                self.playPreviousTrackMediaKey()
+            }
+            return .success
+        }
+    }
+
+    private func playNextTrackMediaKey() {
+        guard !playlist.tracks.isEmpty else { return }
+        let newIndex: Int
+        if playlist.currentIndex < playlist.tracks.count - 1 {
+            newIndex = playlist.currentIndex + 1
+        } else if playlist.repeatMode == .all {
+            newIndex = 0
+        } else {
+            return
+        }
+        playlist.selectTrack(at: newIndex)
+        if let track = playlist.currentTrack {
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
+    private func playPreviousTrackMediaKey() {
+        guard !playlist.tracks.isEmpty else { return }
+        let newIndex: Int
+        if playlist.currentIndex > 0 {
+            newIndex = playlist.currentIndex - 1
+        } else if playlist.repeatMode == .all {
+            newIndex = playlist.tracks.count - 1
+        } else {
+            return
+        }
+        playlist.selectTrack(at: newIndex)
+        if let track = playlist.currentTrack {
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
     init() {
         // 初始化音频引擎
         AudioEngine.shared.delegate = self
+
+        // 初始化媒体键
+        setupMediaKeys()
 
         // 将 playlist 的变化传播到 AppState
         playlist.objectWillChange.sink { [weak self] _ in
@@ -232,6 +314,14 @@ class AppState: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
+    private func updateNowPlayingInfo() {
+        var info: [String: Any] = [:]
+        if let track = playlist.currentTrack {
+            info[MPMediaItemPropertyTitle] = track.title
+        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info.isEmpty ? nil : info
+    }
+
     // MARK: - Folder Scanning
     func scanAndAddFolder(_ url: URL) {
         // 记录到历史
@@ -240,6 +330,7 @@ class AppState: ObservableObject {
         fileScanner.scanDirectory(url) { [weak self] tracks in
             DispatchQueue.main.async {
                 self?.playlist.addTracks(tracks)
+                self?.updateNowPlayingInfo()
             }
         }
     }
@@ -272,6 +363,7 @@ extension AppState: AudioEngineDelegate {
     func audioEngine(_ engine: AudioEngine, didChangeState state: PlaybackState) {
         DispatchQueue.main.async {
             self.playerState.playbackState = state
+            self.updateNowPlayingInfo()
 
             // 播放停止时清除字幕
             if state == .stopped {
