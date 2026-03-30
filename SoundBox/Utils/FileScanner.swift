@@ -79,8 +79,7 @@ class FileScanner {
 
     // MARK: - Find Artwork File
     private func findArtworkFile(in directory: URL) -> URL? {
-        let artworkNames = ["cover", "folder", "album"]
-        let artworkExtensions = ["jpg", "jpeg", "png", "webp"]
+        let imageExtensions = Set(["jpg", "jpeg", "png", "webp"])
 
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory,
@@ -88,17 +87,7 @@ class FileScanner {
             options: .skipsHiddenFiles
         )) ?? []
 
-        for name in artworkNames {
-            for ext in artworkExtensions {
-                if let match = files.first(where: {
-                    $0.deletingPathExtension().lastPathComponent.lowercased() == name &&
-                    $0.pathExtension.lowercased() == ext
-                }) {
-                    return match
-                }
-            }
-        }
-        return nil
+        return files.first { imageExtensions.contains($0.pathExtension.lowercased()) }
     }
 
     // MARK: - Find Subtitle File
