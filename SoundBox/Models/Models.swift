@@ -264,3 +264,95 @@ class FolderHistoryManager: ObservableObject {
         items = decoded
     }
 }
+
+// MARK: - Playback Position
+struct PlaybackPosition: Codable {
+    let url: URL
+    let position: TimeInterval
+    let duration: TimeInterval
+    let updatedAt: Date
+}
+
+// MARK: - Playback Position Manager
+class PlaybackPositionManager {
+    private var positions: [String: PlaybackPosition] = [:]
+    private let maxPositions = 200
+    private let userDefaultsKey = "playbackPositions"
+    private static let lastPlayingURLKey = "lastPlayingTrackURL"
+
+    // One-shot restore: set from saved URL on init, cleared after first use
+    private var restoreURL: URL?
+
+    init() {
+        load()
+        restoreURL = UserDefaults.standard.url(forKey: Self.lastPlayingURLKey)
+    }
+
+    func savePosition(for url: URL, position: TimeInterval, duration: TimeInterval) {
+        // Near end of track: treat as finished, remove position
+        if duration > 5 && (duration - position) < 5.0 {
+            removePosition(for: url)
+            return
+        }
+
+        let key = url.absoluteString
+        positions[key] = PlaybackPosition(
+            url: url,
+            position: position,
+            duration: duration,
+            updatedAt: Date()
+        )
+
+        // Trim oldest if over limit
+        if positions.count > maxPositions {
+            let sorted = positions.values.sorted { $0.updatedAt < $1.updatedAt }
+            for item in sorted.prefix(positions.count - maxPositions) {
+                positions.removeValue(forKey: item.url.absoluteString)
+            }
+        }
+
+        save()
+        markLastPlaying(url)
+    }
+
+    /// Returns saved position if the URL matches the app-launch restore target.
+    /// Clears after one call so manual track changes start from the beginning.
+    func restorePositionIfNeeded(for url: URL, currentDuration: TimeInterval = 0) -> TimeInterval? {
+        guard url == restoreURL,
+              let saved = positions[url.absoluteString] else {
+            return nil
+        }
+        restoreURL = nil
+        // If we have a current duration, discard if file changed significantly
+        if currentDuration > 0 && abs(saved.duration - currentDuration) > 1.0 {
+            return nil
+        }
+        return saved.position
+    }
+
+    func removePosition(for url: URL) {
+        positions.removeValue(forKey: url.absoluteString)
+        save()
+    }
+
+    func markLastPlaying(_ url: URL) {
+        UserDefaults.standard.set(url, forKey: Self.lastPlayingURLKey)
+    }
+
+    private func save() {
+        let array = Array(positions.values)
+        if let data = try? JSONEncoder().encode(array) {
+            UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        }
+    }
+
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
+              let decoded = try? JSONDecoder().decode([PlaybackPosition].self, from: data) else {
+            return
+        }
+        for pos in decoded {
+            positions[pos.url.absoluteString] = pos
+        }
+    }
+}

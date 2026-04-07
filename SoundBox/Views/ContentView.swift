@@ -5,16 +5,9 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // 背景渐变
-            LinearGradient(
-                colors: [
-                    Color(nsColor: .windowBackgroundColor),
-                    Color(nsColor: .windowBackgroundColor).opacity(0.95)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            // 背景
+            Color(nsColor: .windowBackgroundColor)
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // 主内容区
@@ -22,7 +15,7 @@ struct ContentView: View {
                     // 左侧：播放列表
                     PlaylistView()
                         .frame(width: 280)
-                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                        .background(Color.primary.opacity(0.05))
 
                     // 分隔线
                     Divider()
@@ -46,7 +39,7 @@ struct ContentView: View {
                 // 底部：播放控制栏
                 PlayerControlBar(playerState: appState.playerState)
                     .frame(height: 80)
-                    .background(Color(nsColor: .windowBackgroundColor))
+                    .background(.bar)
             }
         }
     }

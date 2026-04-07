@@ -311,7 +311,7 @@ struct ProgressSlider: View {
                 // 悬停时显示预览线
                 if isHovering && !isDragging {
                     Rectangle()
-                        .fill(Color.white.opacity(0.3))
+                        .fill(Color.primary.opacity(0.3))
                         .frame(width: 1, height: 10)
                         .offset(x: geometry.size.width * hoverLocation - 0.5)
 

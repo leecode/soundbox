@@ -51,7 +51,7 @@ struct SubtitlePreviewPanel: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+            .background(Color.primary.opacity(0.05))
 
             // Search field
             HStack(spacing: 8) {
@@ -72,7 +72,7 @@ struct SubtitlePreviewPanel: View {
                 }
             }
             .padding(8)
-            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+            .background(Color.primary.opacity(0.05))
             .cornerRadius(6)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -131,7 +131,7 @@ struct SubtitlePreviewPanel: View {
             }
         }
         .frame(width: 320)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(.bar)
     }
 
     private func isItemActive(_ item: SubtitlePreviewItem) -> Bool {

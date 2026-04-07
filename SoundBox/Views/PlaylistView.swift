@@ -18,7 +18,7 @@ struct PlaylistView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(nsColor: .controlBackgroundColor))
+            .background(Color.primary.opacity(0.05))
 
             Divider()
 
@@ -73,7 +73,7 @@ struct PlaylistView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(nsColor: .controlBackgroundColor))
+            .background(Color.primary.opacity(0.05))
         }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)

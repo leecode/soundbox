@@ -200,6 +200,8 @@ class AppState: ObservableObject {
     var subtitlePreviewManager = SubtitlePreviewManager()
     var playbackProgress = PlaybackProgress()
     var folderHistoryManager = FolderHistoryManager()
+    var playbackPositionManager = PlaybackPositionManager()
+    private var lastPositionSaveTime: TimeInterval = 0
 
     private let fileScanner = FileScanner()
 
@@ -371,10 +373,32 @@ extension AppState: AudioEngineDelegate {
                 self.playerState.currentSubtitle = nil
             }
 
+            // 暂停/停止时保存进度
+            if (state == .paused || state == .stopped),
+               let track = self.playlist.currentTrack {
+                self.playbackPositionManager.savePosition(
+                    for: track.audioFile.url,
+                    position: self.playbackProgress.currentTime,
+                    duration: self.playbackProgress.totalDuration
+                )
+            }
+
+            // 播放完成时移除保存的进度
+            if state == .finished, let track = self.playlist.currentTrack {
+                self.playbackPositionManager.removePosition(for: track.audioFile.url)
+            }
+
             // 开始播放时加载字幕并重置进度
             if state == .playing, let track = self.playlist.currentTrack {
                 self.playbackProgress.currentTime = 0
                 self.playerState.currentTime = 0
+
+                // App 启动后恢复上次的播放位置（仅一次）
+                if let savedPosition = self.playbackPositionManager.restorePositionIfNeeded(for: track.audioFile.url) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        AudioEngine.shared.seek(to: savedPosition)
+                    }
+                }
 
                 if let subtitleURL = track.audioFile.subtitleURL {
                     self.subtitleManager.load(from: subtitleURL)
@@ -424,6 +448,19 @@ extension AppState: AudioEngineDelegate {
             self.playbackProgress.totalDuration = duration
             self.playerState.currentTime = progress
             self.playerState.totalDuration = duration
+
+            // 节流保存播放进度（每5秒）
+            let now = Date().timeIntervalSince1970
+            if now - self.lastPositionSaveTime >= 5.0 {
+                self.lastPositionSaveTime = now
+                if let track = self.playlist.currentTrack {
+                    self.playbackPositionManager.savePosition(
+                        for: track.audioFile.url,
+                        position: progress,
+                        duration: duration
+                    )
+                }
+            }
 
             // 更新字幕列表高亮（始终高亮离当前时间最近的字幕）
             self.subtitlePreviewManager.updateActiveItem(for: progress, currentTrackIndex: self.playlist.currentIndex)
