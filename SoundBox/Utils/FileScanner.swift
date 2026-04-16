@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 
 // MARK: - File Scanner
 class FileScanner {
@@ -6,6 +7,11 @@ class FileScanner {
     // MARK: - Supported Extensions
     private var audioExtensions: [String] { LosslessDecoder.supportedExtensions }
     private let subtitleExtensions = ["vtt", "srt"]
+    private let scriptExtensions = ["txt"]
+
+    // Cap concurrent metadata reads to avoid disk thrashing on large files
+    private let metadataConcurrencyLimit = 4
+    private let metadataSemaphore = DispatchSemaphore(value: 4)
 
     // MARK: - Scan Directory
     func scanDirectory(_ url: URL, completion: @escaping ([Track]) -> Void) {
@@ -27,14 +33,15 @@ class FileScanner {
                 return
             }
 
-            var audioFiles: [(URL, URL?)] = []
+            var audioFiles: [(URL, URL?, URL?)] = []
 
             for case let fileURL as URL in enumerator {
                 let ext = fileURL.pathExtension.lowercased()
 
                 if self.audioExtensions.contains(ext) {
                     let subtitleURL = self.findSubtitleFile(for: fileURL)
-                    audioFiles.append((fileURL, subtitleURL))
+                    let scriptURL = self.findScriptFile(for: fileURL)
+                    audioFiles.append((fileURL, subtitleURL, scriptURL))
                 }
             }
 
@@ -56,11 +63,11 @@ class FileScanner {
             let group = DispatchGroup()
             let syncQueue = DispatchQueue(label: "com.soundbox.scanner.sync", qos: .userInitiated)
 
-            for (audioURL, subtitleURL) in audioFiles {
+            for (audioURL, subtitleURL, scriptURL) in audioFiles {
                 group.enter()
                 let currentIndex = index
                 index += 1
-                self.createTrack(from: audioURL, subtitleURL: subtitleURL, artworkURL: artworkURL, index: currentIndex) { track in
+                self.createTrack(from: audioURL, subtitleURL: subtitleURL, artworkURL: artworkURL, scriptURL: scriptURL, index: currentIndex) { track in
                     syncQueue.sync {
                         if let track = track {
                             tracks.append(track)
@@ -118,24 +125,66 @@ class FileScanner {
         return nil
     }
 
+    // MARK: - Find Script File
+    private func findScriptFile(for audioURL: URL) -> URL? {
+        let baseName = audioURL.deletingPathExtension().lastPathComponent
+
+        for scriptExt in scriptExtensions {
+            let scriptPath = audioURL.deletingLastPathComponent()
+                .appendingPathComponent(baseName + "." + scriptExt)
+            if FileManager.default.fileExists(atPath: scriptPath.path) {
+                return scriptPath
+            }
+        }
+        return nil
+    }
+
     // MARK: - Create Track
-    private func createTrack(from url: URL, subtitleURL: URL?, artworkURL: URL?, index: Int, completion: @escaping (Track?) -> Void) {
+    private func createTrack(from url: URL, subtitleURL: URL?, artworkURL: URL?, scriptURL: URL?, index: Int, completion: @escaping (Track?) -> Void) {
         let decoder = LosslessDecoder()
         decoder.getAudioInfo(url) { result in
             switch result {
             case .success(let info):
+                // Read embedded metadata in parallel (AVAsset on background thread)
+                self.metadataSemaphore.wait()
+                let asset = AVAsset(url: url)
+                var embeddedTitle: String?
+                var embeddedArtist: String?
+                var embeddedAlbum: String?
+                var embeddedArtworkData: Data?
+
+                for item in asset.commonMetadata {
+                    if item.commonKey == .commonKeyTitle {
+                        embeddedTitle = item.stringValue
+                    } else if item.commonKey == .commonKeyArtist {
+                        embeddedArtist = item.stringValue
+                    } else if item.commonKey == .commonKeyAlbumName {
+                        embeddedAlbum = item.stringValue
+                    } else if item.commonKey == .commonKeyArtwork {
+                        embeddedArtworkData = item.dataValue
+                    }
+                }
+                self.metadataSemaphore.signal()
+
                 let audioFile = AudioFile(
                     url: url,
                     format: info.audioFormat,
                     duration: info.duration,
                     subtitleURL: subtitleURL,
-                    artworkURL: artworkURL
+                    artworkURL: artworkURL,
+                    scriptURL: scriptURL,
+                    embeddedTitle: embeddedTitle,
+                    embeddedArtist: embeddedArtist,
+                    embeddedAlbum: embeddedAlbum,
+                    embeddedArtworkData: embeddedArtworkData
                 )
 
                 let track = Track(
                     audioFile: audioFile,
                     index: index,
-                    title: url.deletingPathExtension().lastPathComponent
+                    title: embeddedTitle ?? url.deletingPathExtension().lastPathComponent,
+                    artist: embeddedArtist,
+                    album: embeddedAlbum
                 )
                 completion(track)
 

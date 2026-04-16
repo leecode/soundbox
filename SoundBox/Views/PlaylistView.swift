@@ -3,6 +3,20 @@ import SwiftUI
 struct PlaylistView: View {
     @EnvironmentObject var appState: AppState
 
+    @State private var searchText: String = ""
+
+    private var filteredTracks: [(offset: Int, element: Track)] {
+        let enumerated = Array(appState.playlist.tracks.enumerated())
+        if searchText.isEmpty { return enumerated }
+
+        let currentIdx = appState.playlist.currentIndex
+        return enumerated.filter { index, track in
+            // Always keep current playing track visible
+            if index == currentIdx { return true }
+            return track.title.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // 标题栏
@@ -22,6 +36,34 @@ struct PlaylistView: View {
 
             Divider()
 
+            // 搜索栏
+            if !appState.playlist.tracks.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    TextField("搜索曲目...", text: $searchText)
+                        .textFieldStyle(.plain)
+
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(8)
+                .background(Color.primary.opacity(0.05))
+                .cornerRadius(6)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+
+                Divider()
+            }
+
             // 播放列表
             if appState.playlist.tracks.isEmpty {
                 VStack(spacing: 12) {
@@ -36,7 +78,7 @@ struct PlaylistView: View {
                 }
             } else {
                 List(selection: $appState.playlist.currentIndex) {
-                    ForEach(Array(appState.playlist.tracks.enumerated()), id: \.element.id) { index, track in
+                    ForEach(filteredTracks, id: \.element.id) { index, track in
                         TrackRowView(track: track, index: index, isPlaying: index == appState.playlist.currentIndex)
                             .tag(index)
                             .contentShape(Rectangle())
@@ -108,13 +150,9 @@ struct PlaylistView: View {
     }
 
     private func playTrack(at index: Int) {
-        print("▶️ playTrack 被调用, index: \(index)")
         appState.playlist.selectTrack(at: index)
         if let track = appState.playlist.currentTrack {
-            print("▶️ 准备播放: \(track.audioFile.url.path)")
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
-        } else {
-            print("▶️ 无法获取 currentTrack")
         }
     }
 }

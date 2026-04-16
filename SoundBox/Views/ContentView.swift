@@ -20,15 +20,9 @@ struct ContentView: View {
                     // 分隔线
                     Divider()
 
-                    // 字幕预览面板
+                    // 字幕/台本面板
                     if appState.showSubtitlePanel {
-                        SubtitlePreviewPanel(
-                            subtitleManager: appState.subtitleManager,
-                            subtitlePreviewManager: appState.subtitlePreviewManager,
-                            currentTrackIndex: appState.playlist.currentIndex,
-                            onClose: { appState.showSubtitlePanel = false },
-                            onSelectSubtitle: { appState.playFromSubtitle($0) }
-                        )
+                        SidePanelView()
                         Divider()
                     }
 
@@ -41,7 +35,100 @@ struct ContentView: View {
                     .frame(height: 80)
                     .background(.bar)
             }
+
+            // 书签添加浮层
+            if appState.showBookmarkOverlay {
+                Color.black.opacity(0.2)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        appState.showBookmarkOverlay = false
+                    }
+
+                BookmarkOverlay(
+                    timestamp: appState.playbackProgress.currentTime,
+                    onSave: { label in
+                        appState.addBookmarkAtCurrentPosition(label: label)
+                        appState.showBookmarkOverlay = false
+                    },
+                    onCancel: {
+                        appState.showBookmarkOverlay = false
+                    }
+                )
+            }
+
+            // 错误提示 toast
+            if let errorMessage = appState.errorMessage {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.yellow)
+                        Text(errorMessage)
+                            .font(.body)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+                    .padding(.bottom, 100)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            appState.errorMessage = nil
+                        }
+                    }
+                }
+            }
         }
+    }
+}
+
+// MARK: - Side Panel (字幕 + 台本 标签页)
+struct SidePanelView: View {
+    @EnvironmentObject var appState: AppState
+    @State private var selectedTab: SideTab = .subtitles
+
+    enum SideTab: String, CaseIterable {
+        case subtitles = "字幕"
+        case script = "台本"
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 标签栏
+            HStack(spacing: 0) {
+                ForEach(SideTab.allCases, id: \.self) { tab in
+                    Button(action: { selectedTab = tab }) {
+                        Text(tab.rawValue)
+                            .font(.subheadline)
+                            .fontWeight(selectedTab == tab ? .semibold : .regular)
+                            .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(selectedTab == tab ? Color.primary.opacity(0.05) : Color.clear)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .background(Color.primary.opacity(0.03))
+
+            Divider()
+
+            // 内容
+            switch selectedTab {
+            case .subtitles:
+                SubtitlePreviewPanel(
+                    subtitleManager: appState.subtitleManager,
+                    subtitlePreviewManager: appState.subtitlePreviewManager,
+                    currentTrackIndex: appState.playlist.currentIndex,
+                    onClose: { appState.showSubtitlePanel = false },
+                    onSelectSubtitle: { appState.playFromSubtitle($0) }
+                )
+            case .script:
+                ScriptView(content: appState.scriptContent)
+            }
+        }
+        .frame(width: 320)
+        .background(.bar)
     }
 }
 
@@ -74,30 +161,11 @@ struct CurrentTrackView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // 封面图或波形占位
-            Group {
-                if let artworkURL = track.audioFile.artworkURL,
-                   let nsImage = NSImage(contentsOf: artworkURL) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.accentColor.opacity(0.3), Color.accentColor.opacity(0.1)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay {
-                            Image(systemName: "waveform")
-                                .font(.system(size: 60))
-                                .foregroundStyle(.secondary)
-                        }
-                }
-            }
+            // 封面图或波形占位（异步加载，优先使用内嵌封面）
+            AsyncArtworkView(
+                embeddedData: track.audioFile.embeddedArtworkData,
+                artworkURL: track.audioFile.artworkURL
+            )
             .frame(width: 200, height: 200)
 
             // 音频格式信息

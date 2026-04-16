@@ -6,12 +6,17 @@ struct PlayerControlBar: View {
     @State private var isDraggingSlider = false
     @State private var sliderValue: Double = 0
 
+    private var currentBookmarks: [Bookmark] {
+        appState.currentFileBookmarks()
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // 进度条
             ProgressSlider(
                 value: $sliderValue,
                 totalDuration: playerState.totalDuration,
+                bookmarks: currentBookmarks,
                 onEditingChanged: { editing in
                     isDraggingSlider = editing
                     if !editing {
@@ -127,6 +132,19 @@ struct PlayerControlBar: View {
             .buttonStyle(.plain)
             .frame(width: 44, height: 44)
             .help(repeatModeHelpText)
+
+            // 书签
+            Button(action: {
+                appState.showBookmarkOverlay = true
+            }) {
+                Image(systemName: "bookmark")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .frame(width: 44, height: 44)
+            .help("添加书签 (⌘B)")
+            .disabled(appState.playlist.tracks.isEmpty)
         }
     }
 
@@ -271,6 +289,7 @@ struct PlayerControlBar: View {
 struct ProgressSlider: View {
     @Binding var value: Double
     let totalDuration: Double
+    let bookmarks: [Bookmark]
     let onEditingChanged: (Bool) -> Void
 
     @State private var isDragging = false
@@ -307,6 +326,22 @@ struct ProgressSlider: View {
                 RoundedRectangle(cornerRadius: isHovering || isDragging ? 3 : 2)
                     .fill(Color.accentColor)
                     .frame(width: geometry.size.width * progress, height: isHovering || isDragging ? 6 : 4)
+
+                // 书签标记
+                ForEach(bookmarks) { bookmark in
+                    let ratio = CGFloat((bookmark.timestamp - range.lowerBound) / (range.upperBound - range.lowerBound))
+                    if ratio > 0 && ratio < 1 {
+                        Rectangle()
+                            .fill(Color.orange.opacity(0.8))
+                            .frame(width: 2, height: isHovering || isDragging ? 10 : 6)
+                            .offset(x: geometry.size.width * ratio - 1)
+                            .contentShape(Rectangle().size(width: 10, height: 14))
+                            .onTapGesture {
+                                AudioEngine.shared.seek(to: bookmark.timestamp)
+                            }
+                            .help(bookmark.label.isEmpty ? formatTime(bookmark.timestamp) : "\(bookmark.label) (\(formatTime(bookmark.timestamp)))")
+                    }
+                }
 
                 // 悬停时显示预览线
                 if isHovering && !isDragging {

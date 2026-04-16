@@ -33,8 +33,13 @@ struct AudioFile: Identifiable, Hashable {
     let fileSize: UInt64
     let subtitleURL: URL?
     let artworkURL: URL?
+    let scriptURL: URL?
+    let embeddedTitle: String?
+    let embeddedArtist: String?
+    let embeddedAlbum: String?
+    let embeddedArtworkData: Data?
 
-    init(url: URL, format: AudioFormat = .cdQuality, duration: TimeInterval = 0, subtitleURL: URL? = nil, artworkURL: URL? = nil) {
+    init(url: URL, format: AudioFormat = .cdQuality, duration: TimeInterval = 0, subtitleURL: URL? = nil, artworkURL: URL? = nil, scriptURL: URL? = nil, embeddedTitle: String? = nil, embeddedArtist: String? = nil, embeddedAlbum: String? = nil, embeddedArtworkData: Data? = nil) {
         self.url = url
         self.name = url.deletingPathExtension().lastPathComponent
         self.format = format
@@ -42,6 +47,11 @@ struct AudioFile: Identifiable, Hashable {
         self.fileSize = UInt64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         self.subtitleURL = subtitleURL
         self.artworkURL = artworkURL
+        self.scriptURL = scriptURL
+        self.embeddedTitle = embeddedTitle
+        self.embeddedArtist = embeddedArtist
+        self.embeddedAlbum = embeddedAlbum
+        self.embeddedArtworkData = embeddedArtworkData
     }
 
     // Explicit Hashable conformance - hash by URL only
@@ -128,10 +138,7 @@ class Playlist: ObservableObject {
     }
 
     func addTracks(_ newTracks: [Track]) {
-        print("🎵 Playlist.addTracks 被调用，添加 \(newTracks.count) 个曲目")
-        print("🎵 添加前 tracks.count = \(tracks.count)")
         tracks.append(contentsOf: newTracks)
-        print("🎵 添加后 tracks.count = \(tracks.count)")
     }
 
     func removeTrack(at index: Int) {

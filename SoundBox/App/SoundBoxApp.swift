@@ -85,6 +85,11 @@ struct SoundBoxApp: App {
                     }
                 }
                 .keyboardShortcut("s", modifiers: .command)
+
+                Button("添加书签") {
+                    appState.showBookmarkOverlay = true
+                }
+                .keyboardShortcut("b", modifiers: .command)
             }
         }
     }
@@ -195,12 +200,16 @@ class PlaybackProgress: ObservableObject {
 class AppState: ObservableObject {
     @Published var playerState = PlayerState()
     @Published var showSubtitlePanel: Bool = false
+    @Published var showBookmarkOverlay: Bool = false
+    @Published var errorMessage: String?
+    @Published var scriptContent: String?
     var playlist: Playlist = Playlist()
     var subtitleManager = SubtitleManager()
     var subtitlePreviewManager = SubtitlePreviewManager()
     var playbackProgress = PlaybackProgress()
     var folderHistoryManager = FolderHistoryManager()
     var playbackPositionManager = PlaybackPositionManager()
+    var bookmarkManager = BookmarkManager()
     private var lastPositionSaveTime: TimeInterval = 0
 
     private let fileScanner = FileScanner()
@@ -305,6 +314,11 @@ class AppState: ObservableObject {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
 
+        // 将 bookmarkManager 的变化传播到 AppState
+        bookmarkManager.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
         // 注意：不传播 playerState 和 playbackProgress 的高频更新
         // 需要这些更新的视图应直接观察 playerState
 
@@ -358,6 +372,44 @@ class AppState: ObservableObject {
             }
         }
     }
+
+    // MARK: - Bookmarks
+    func addBookmarkAtCurrentPosition(label: String = "") {
+        guard let track = playlist.currentTrack else { return }
+        let timestamp = playbackProgress.currentTime
+        bookmarkManager.addBookmark(audioFileURL: track.audioFile.url, timestamp: timestamp, label: label)
+    }
+
+    func currentFileBookmarks() -> [Bookmark] {
+        guard let track = playlist.currentTrack else { return [] }
+        return bookmarkManager.bookmarks(for: track.audioFile.url)
+    }
+
+    // MARK: - Script Loading
+    func loadScript(from url: URL) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var usedEncoding: UInt = 0
+            var content: String?
+
+            // Try automatic detection first
+            if let str = try? NSString(contentsOf: url, usedEncoding: &usedEncoding) as String {
+                content = str
+            } else {
+                // Fallback chain: UTF-8 → Shift-JIS → ASCII
+                let encodings: [String.Encoding] = [.utf8, .init(rawValue: UInt(CFStringEncodings.shiftJIS.rawValue)), .ascii]
+                for encoding in encodings {
+                    if let str = try? String(contentsOf: url, encoding: encoding) {
+                        content = str
+                        break
+                    }
+                }
+            }
+
+            DispatchQueue.main.async {
+                self?.scriptContent = content
+            }
+        }
+    }
 }
 
 // MARK: - Audio Engine Delegate
@@ -404,6 +456,13 @@ extension AppState: AudioEngineDelegate {
                     self.subtitleManager.load(from: subtitleURL)
                 } else {
                     self.subtitleManager.reset()
+                }
+
+                // 加载台本
+                if let scriptURL = track.audioFile.scriptURL {
+                    self.loadScript(from: scriptURL)
+                } else {
+                    self.scriptContent = nil
                 }
             }
 
@@ -483,6 +542,8 @@ extension AppState: AudioEngineDelegate {
     }
 
     func audioEngine(_ engine: AudioEngine, didEncounterError error: Error) {
-        // Error handling - could show alert to user
+        DispatchQueue.main.async {
+            self.errorMessage = error.localizedDescription
+        }
     }
 }

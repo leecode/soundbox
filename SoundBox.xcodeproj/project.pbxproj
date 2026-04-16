@@ -18,6 +18,11 @@
 		A1000009 /* VTTParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009; };
 		A1000010 /* FileScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000010; };
 		A1000011 /* SubtitlePreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013; };
+		A1000012 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014; };
+		A1000013 /* Bookmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015; };
+		A1000014 /* BookmarkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016; };
+		A1000015 /* BookmarkOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017; };
+		A1000016 /* ScriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000018; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,7 +38,11 @@
 		A2000010 /* FileScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileScanner.swift; sourceTree = "<group>"; };
 		A2000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000013 /* SubtitlePreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitlePreviewPanel.swift; sourceTree = "<group>"; };
-		A2000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A2000014 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
+		A2000015 /* Bookmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookmark.swift; sourceTree = "<group>"; };
+		A2000016 /* BookmarkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkManager.swift; sourceTree = "<group>"; };
+		A2000017 /* BookmarkOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkOverlay.swift; sourceTree = "<group>"; };
+		A2000018 /* ScriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptView.swift; sourceTree = "<group>"; };
 		A3000001 /* SoundBox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundBox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -66,6 +75,7 @@
 				A5000008 /* Decoder */,
 				A5000009 /* Subtitle */,
 				A5000010 /* Utils */,
+				A5000012 /* Managers */,
 				A5000011 /* Resources */,
 			);
 			path = SoundBox;
@@ -91,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				A2000002 /* Models.swift */,
+				A2000015 /* Bookmark.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -103,6 +114,8 @@
 				A2000005 /* PlayerControlBar.swift */,
 				A2000006 /* SubtitleView.swift */,
 				A2000013 /* SubtitlePreviewPanel.swift */,
+				A2000017 /* BookmarkOverlay.swift */,
+				A2000018 /* ScriptView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -135,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				A2000010 /* FileScanner.swift */,
+				A2000014 /* ImageCache.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -146,6 +160,14 @@
 				A2000012 /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		A5000012 /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+				A2000016 /* BookmarkManager.swift */,
+			);
+			path = Managers;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -228,6 +250,11 @@
 				A1000009 /* VTTParser.swift in Sources */,
 				A1000010 /* FileScanner.swift in Sources */,
 				A1000011 /* SubtitlePreviewPanel.swift in Sources */,
+				A1000012 /* ImageCache.swift in Sources */,
+				A1000013 /* Bookmark.swift in Sources */,
+				A1000014 /* BookmarkManager.swift in Sources */,
+				A1000015 /* BookmarkOverlay.swift in Sources */,
+				A1000016 /* ScriptView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
