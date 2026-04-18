@@ -82,7 +82,7 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Side Panel (字幕 + 台本 标签页)
+// MARK: - Side Panel (字幕 + 台本 + 书签 标签页)
 struct SidePanelView: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedTab: SideTab = .subtitles
@@ -90,6 +90,7 @@ struct SidePanelView: View {
     enum SideTab: String, CaseIterable {
         case subtitles = "字幕"
         case script = "台本"
+        case bookmarks = "书签"
     }
 
     var body: some View {
@@ -125,6 +126,8 @@ struct SidePanelView: View {
                 )
             case .script:
                 ScriptView(content: appState.scriptContent)
+            case .bookmarks:
+                BookmarkListView()
             }
         }
         .frame(width: 320)
@@ -243,5 +246,81 @@ struct EmptyStateView: View {
         if panel.runModal() == .OK {
             appState.scanAndAddFolders(panel.urls)
         }
+    }
+}
+
+// MARK: - Bookmark List View
+struct BookmarkListView: View {
+    @EnvironmentObject var appState: AppState
+
+    private var bookmarks: [Bookmark] {
+        appState.currentFileBookmarks()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if bookmarks.isEmpty {
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "bookmark")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.tertiary)
+                    Text("暂无书签")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                    Text("播放时按 ⌘B 在当前位置添加书签")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(bookmarks) { bookmark in
+                        HStack(spacing: 12) {
+                            Image(systemName: "bookmark.fill")
+                                .foregroundStyle(.orange)
+                                .font(.caption)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                if !bookmark.label.isEmpty {
+                                    Text(bookmark.label)
+                                        .font(.body)
+                                        .lineLimit(1)
+                                }
+                                Text(formatTime(bookmark.timestamp))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                            }
+
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            AudioEngine.shared.seek(to: bookmark.timestamp)
+                        }
+                        .contextMenu {
+                            Button("删除书签") {
+                                appState.bookmarkManager.removeBookmark(bookmark)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+    }
+
+    private func formatTime(_ time: TimeInterval) -> String {
+        let totalSeconds = Int(time)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
