@@ -2,14 +2,44 @@ import SwiftUI
 import Combine
 import MediaPlayer
 
+private enum AppTheme: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .light: return "浅色"
+        case .dark: return "深色"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
 @main
 struct SoundBoxApp: App {
     @StateObject private var appState = AppState()
+    @AppStorage("app_theme") private var appThemeRawValue: String = AppTheme.system.rawValue
+
+    private var selectedTheme: AppTheme {
+        AppTheme(rawValue: appThemeRawValue) ?? .system
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .preferredColorScheme(selectedTheme.colorScheme)
                 .frame(minWidth: 900, minHeight: 680)
         }
         .windowStyle(.hiddenTitleBar)
@@ -90,6 +120,14 @@ struct SoundBoxApp: App {
                     appState.showBookmarkOverlay = true
                 }
                 .keyboardShortcut("b", modifiers: .command)
+            }
+
+            CommandMenu("显示") {
+                Picker("主题", selection: $appThemeRawValue) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Text(theme.title).tag(theme.rawValue)
+                    }
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SubtitleView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Group {
@@ -19,7 +20,7 @@ struct SubtitleView: View {
                     )
                     .overlay {
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            .stroke(Color.primary.opacity(colorScheme == .dark ? 0.2 : 0.14), lineWidth: 1)
                     }
             } else {
                 Text(" ")

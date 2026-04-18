@@ -340,6 +340,7 @@ struct CurrentTrackHeroView: View {
 // MARK: - Empty State View
 struct EmptyStateView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
 
     private var recentFolders: [FolderHistoryItem] {
         appState.folderHistoryManager.items.filter {
@@ -384,7 +385,10 @@ struct EmptyStateView: View {
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .overlay {
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        .stroke(
+                            Color.primary.opacity(colorScheme == .dark ? 0.24 : 0.14),
+                            style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                        )
                 }
 
                 if !recentFolders.isEmpty {
@@ -412,10 +416,16 @@ struct EmptyStateView: View {
                                 }
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
-                                .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                                .background(
+                                    Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05),
+                                    in: RoundedRectangle(cornerRadius: 8)
+                                )
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                                        .stroke(
+                                            Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                                            lineWidth: 1
+                                        )
                                 }
                             }
                             .buttonStyle(.plain)
