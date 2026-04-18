@@ -299,7 +299,7 @@ struct BookmarkListView: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            AudioEngine.shared.seek(to: bookmark.timestamp)
+                            appState.seekTo(bookmark.timestamp)
                         }
                         .contextMenu {
                             Button("删除书签") {

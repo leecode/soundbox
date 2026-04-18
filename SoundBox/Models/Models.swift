@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 
 // MARK: - Audio Format
 struct AudioFormat: Equatable {
@@ -138,7 +139,9 @@ class Playlist: ObservableObject {
     }
 
     func addTracks(_ newTracks: [Track]) {
-        tracks.append(contentsOf: newTracks)
+        let existingURLs = Set(tracks.map { $0.audioFile.url })
+        let uniqueTracks = newTracks.filter { !existingURLs.contains($0.audioFile.url) }
+        tracks.append(contentsOf: uniqueTracks)
     }
 
     func removeTrack(at index: Int) {
@@ -222,6 +225,7 @@ class FolderHistoryManager: ObservableObject {
 
     private let maxItems = 10
     private let userDefaultsKey = "folderHistory"
+    private static let logger = Logger(subsystem: "com.soundbox", category: "FolderHistory")
 
     init() {
         load()
@@ -258,17 +262,21 @@ class FolderHistoryManager: ObservableObject {
     }
 
     private func save() {
-        if let data = try? JSONEncoder().encode(items) {
+        do {
+            let data = try JSONEncoder().encode(items)
             UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        } catch {
+            Self.logger.error("Failed to save folder history: \(error.localizedDescription)")
         }
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
-              let decoded = try? JSONDecoder().decode([FolderHistoryItem].self, from: data) else {
-            return
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey) else { return }
+        do {
+            items = try JSONDecoder().decode([FolderHistoryItem].self, from: data)
+        } catch {
+            Self.logger.error("Failed to load folder history: \(error.localizedDescription)")
         }
-        items = decoded
     }
 }
 
@@ -286,6 +294,7 @@ class PlaybackPositionManager {
     private let maxPositions = 200
     private let userDefaultsKey = "playbackPositions"
     private static let lastPlayingURLKey = "lastPlayingTrackURL"
+    private static let logger = Logger(subsystem: "com.soundbox", category: "PlaybackPosition")
 
     // One-shot restore: set from saved URL on init, cleared after first use
     private var restoreURL: URL?
@@ -348,18 +357,23 @@ class PlaybackPositionManager {
 
     private func save() {
         let array = Array(positions.values)
-        if let data = try? JSONEncoder().encode(array) {
+        do {
+            let data = try JSONEncoder().encode(array)
             UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        } catch {
+            Self.logger.error("Failed to save playback positions: \(error.localizedDescription)")
         }
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
-              let decoded = try? JSONDecoder().decode([PlaybackPosition].self, from: data) else {
-            return
-        }
-        for pos in decoded {
-            positions[pos.url.absoluteString] = pos
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey) else { return }
+        do {
+            let decoded = try JSONDecoder().decode([PlaybackPosition].self, from: data)
+            for pos in decoded {
+                positions[pos.url.absoluteString] = pos
+            }
+        } catch {
+            Self.logger.error("Failed to load playback positions: \(error.localizedDescription)")
         }
     }
 }

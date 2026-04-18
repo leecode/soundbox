@@ -87,7 +87,9 @@ struct PlaylistView: View {
                             }
                     }
                     .onDelete { indexSet in
-                        for index in indexSet.sorted().reversed() {
+                        // Map filtered indices back to original playlist indices
+                        let originalIndices = indexSet.map { filteredTracks[$0].offset }
+                        for index in originalIndices.sorted().reversed() {
                             appState.playlist.removeTrack(at: index)
                         }
                     }

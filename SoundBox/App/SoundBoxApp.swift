@@ -44,17 +44,17 @@ struct SoundBoxApp: App {
             // 播放控制菜单
             CommandMenu("播放") {
                 Button("播放/暂停") {
-                    togglePlayback()
+                    appState.togglePlayback()
                 }
                 .keyboardShortcut(.space, modifiers: [])
 
                 Button("上一曲") {
-                    previousTrack()
+                    appState.goToPreviousTrack()
                 }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
 
                 Button("下一曲") {
-                    nextTrack()
+                    appState.goToNextTrack()
                 }
                 .keyboardShortcut(.rightArrow, modifiers: .command)
 
@@ -91,48 +91,6 @@ struct SoundBoxApp: App {
                 }
                 .keyboardShortcut("b", modifiers: .command)
             }
-        }
-    }
-
-    private func togglePlayback() {
-        if appState.playerState.playbackState.isPlaying {
-            AudioEngine.shared.pause()
-        } else if appState.playerState.playbackState == .paused {
-            AudioEngine.shared.resume()
-        } else if let track = appState.playlist.currentTrack {
-            AudioEngine.shared.loadAndPlay(track.audioFile.url)
-        }
-    }
-
-    private func previousTrack() {
-        guard !appState.playlist.tracks.isEmpty else { return }
-        let newIndex: Int
-        if appState.playlist.currentIndex > 0 {
-            newIndex = appState.playlist.currentIndex - 1
-        } else if appState.playlist.repeatMode == .all {
-            newIndex = appState.playlist.tracks.count - 1
-        } else {
-            return
-        }
-        appState.playlist.selectTrack(at: newIndex)
-        if let track = appState.playlist.currentTrack {
-            AudioEngine.shared.loadAndPlay(track.audioFile.url)
-        }
-    }
-
-    private func nextTrack() {
-        guard !appState.playlist.tracks.isEmpty else { return }
-        let newIndex: Int
-        if appState.playlist.currentIndex < appState.playlist.tracks.count - 1 {
-            newIndex = appState.playlist.currentIndex + 1
-        } else if appState.playlist.repeatMode == .all {
-            newIndex = 0
-        } else {
-            return
-        }
-        appState.playlist.selectTrack(at: newIndex)
-        if let track = appState.playlist.currentTrack {
-            AudioEngine.shared.loadAndPlay(track.audioFile.url)
         }
     }
 
@@ -224,11 +182,7 @@ class AppState: ObservableObject {
         commandCenter.playCommand.addTarget { [weak self] _ in
             guard let self = self else { return .commandFailed }
             DispatchQueue.main.async {
-                if self.playerState.playbackState == .paused {
-                    AudioEngine.shared.resume()
-                } else if let track = self.playlist.currentTrack {
-                    AudioEngine.shared.loadAndPlay(track.audioFile.url)
-                }
+                self.togglePlayback()
             }
             return .success
         }
@@ -246,7 +200,7 @@ class AppState: ObservableObject {
         commandCenter.nextTrackCommand.addTarget { [weak self] _ in
             guard let self = self else { return .commandFailed }
             DispatchQueue.main.async {
-                self.playNextTrackMediaKey()
+                self.goToNextTrack()
             }
             return .success
         }
@@ -254,13 +208,25 @@ class AppState: ObservableObject {
         commandCenter.previousTrackCommand.addTarget { [weak self] _ in
             guard let self = self else { return .commandFailed }
             DispatchQueue.main.async {
-                self.playPreviousTrackMediaKey()
+                self.goToPreviousTrack()
             }
             return .success
         }
     }
 
-    private func playNextTrackMediaKey() {
+    // MARK: - Unified Playback Controls
+
+    func togglePlayback() {
+        if playerState.playbackState.isPlaying {
+            AudioEngine.shared.pause()
+        } else if playerState.playbackState == .paused {
+            AudioEngine.shared.resume()
+        } else if let track = playlist.currentTrack {
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
+    func goToNextTrack() {
         guard !playlist.tracks.isEmpty else { return }
         let newIndex: Int
         if playlist.currentIndex < playlist.tracks.count - 1 {
@@ -276,7 +242,7 @@ class AppState: ObservableObject {
         }
     }
 
-    private func playPreviousTrackMediaKey() {
+    func goToPreviousTrack() {
         guard !playlist.tracks.isEmpty else { return }
         let newIndex: Int
         if playlist.currentIndex > 0 {
@@ -290,6 +256,10 @@ class AppState: ObservableObject {
         if let track = playlist.currentTrack {
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
         }
+    }
+
+    func seekTo(_ time: TimeInterval) {
+        AudioEngine.shared.seek(to: time)
     }
 
     init() {
@@ -484,21 +454,7 @@ extension AppState: AudioEngineDelegate {
             return
         }
 
-        let nextIndex = self.playlist.currentIndex + 1
-
-        if nextIndex < self.playlist.tracks.count {
-            self.playlist.currentIndex = nextIndex
-            if let track = self.playlist.currentTrack {
-                AudioEngine.shared.loadAndPlay(track.audioFile.url)
-            }
-        } else if self.playlist.repeatMode == .all {
-            // 列表循环：回到第一首
-            self.playlist.currentIndex = 0
-            if let track = self.playlist.currentTrack {
-                AudioEngine.shared.loadAndPlay(track.audioFile.url)
-            }
-        }
-        // repeatMode == .none: 播放结束，不继续
+        goToNextTrack()
     }
 
     func audioEngine(_ engine: AudioEngine, didUpdateProgress progress: TimeInterval, duration: TimeInterval) {

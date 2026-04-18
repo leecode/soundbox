@@ -87,19 +87,29 @@ class FileScanner {
     // MARK: - Find Artwork File
     private func findArtworkFile(in directory: URL) -> URL? {
         let imageExtensions = Set(["jpg", "jpeg", "png", "webp"])
+        let preferredNames = ["cover", "folder", "album", "artwork", "front"]
 
+        // First pass: look for preferred filenames (cover.jpg, folder.png, etc.)
         guard let enumerator = FileManager.default.enumerator(
             at: directory,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else { return nil }
 
+        var allImages: [URL] = []
+
         for case let fileURL as URL in enumerator {
             if imageExtensions.contains(fileURL.pathExtension.lowercased()) {
-                return fileURL
+                let nameWithoutExt = fileURL.deletingPathExtension().lastPathComponent.lowercased()
+                if preferredNames.contains(nameWithoutExt) {
+                    return fileURL  // Found a preferred artwork file
+                }
+                allImages.append(fileURL)
             }
         }
-        return nil
+
+        // Fallback: return first image found
+        return allImages.first
     }
 
     // MARK: - Find Subtitle File

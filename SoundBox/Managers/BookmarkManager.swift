@@ -1,9 +1,12 @@
 import Foundation
 import Combine
+import os.log
 
 // MARK: - Bookmark Manager
 class BookmarkManager: ObservableObject {
     @Published var bookmarks: [Bookmark] = []
+
+    private static let logger = Logger(subsystem: "com.soundbox", category: "BookmarkManager")
 
     private let maxBookmarks = 500
     private let currentSchemaVersion = 1
@@ -53,8 +56,12 @@ class BookmarkManager: ObservableObject {
         let fm = FileManager.default
 
         // Ensure directory exists
-        if !fm.fileExists(atPath: storageDirectory.path) {
-            try? fm.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+        do {
+            if !fm.fileExists(atPath: storageDirectory.path) {
+                try fm.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+            }
+        } catch {
+            Self.logger.error("Failed to create storage directory: \(error.localizedDescription)")
         }
 
         // Check schema version
@@ -65,26 +72,42 @@ class BookmarkManager: ObservableObject {
             return
         }
 
-        guard fm.fileExists(atPath: bookmarksFile.path),
-              let data = try? Data(contentsOf: bookmarksFile),
-              let decoded = try? JSONDecoder().decode([Bookmark].self, from: data) else {
-            return
+        guard fm.fileExists(atPath: bookmarksFile.path) else { return }
+
+        do {
+            let data = try Data(contentsOf: bookmarksFile)
+            bookmarks = try JSONDecoder().decode([Bookmark].self, from: data)
+        } catch {
+            Self.logger.error("Failed to load bookmarks: \(error.localizedDescription)")
         }
-        bookmarks = decoded
     }
 
     private func save() {
         let fm = FileManager.default
 
         // Ensure directory exists
-        if !fm.fileExists(atPath: storageDirectory.path) {
-            try? fm.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+        do {
+            if !fm.fileExists(atPath: storageDirectory.path) {
+                try fm.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+            }
+        } catch {
+            Self.logger.error("Failed to create storage directory: \(error.localizedDescription)")
+            return
         }
 
-        guard let data = try? JSONEncoder().encode(bookmarks) else { return }
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(bookmarks)
+        } catch {
+            Self.logger.error("Failed to encode bookmarks: \(error.localizedDescription)")
+            return
+        }
 
-        // Atomic write via Data.write
-        try? data.write(to: bookmarksFile, options: .atomic)
+        do {
+            try data.write(to: bookmarksFile, options: .atomic)
+        } catch {
+            Self.logger.error("Failed to save bookmarks: \(error.localizedDescription)")
+        }
     }
 
     private func trimIfNeeded() {

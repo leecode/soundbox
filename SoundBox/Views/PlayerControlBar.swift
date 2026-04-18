@@ -17,6 +17,9 @@ struct PlayerControlBar: View {
                 value: $sliderValue,
                 totalDuration: playerState.totalDuration,
                 bookmarks: currentBookmarks,
+                onBookmarkSeek: { time in
+                    appState.seekTo(time)
+                },
                 onEditingChanged: { editing in
                     isDraggingSlider = editing
                     if !editing {
@@ -231,57 +234,15 @@ struct PlayerControlBar: View {
     }
 
     private func togglePlayback() {
-        if playerState.playbackState.isPlaying {
-            AudioEngine.shared.pause()
-        } else if playerState.playbackState == .paused {
-            // 暂停状态：继续播放
-            AudioEngine.shared.resume()
-        } else {
-            // 停止状态：从头播放
-            if let track = appState.playlist.currentTrack {
-                AudioEngine.shared.loadAndPlay(track.audioFile.url)
-            }
-        }
+        appState.togglePlayback()
     }
 
     private func previousTrack() {
-        guard !appState.playlist.tracks.isEmpty else { return }
-
-        let tracksCount = appState.playlist.tracks.count
-        let newIndex: Int
-
-        if appState.playlist.currentIndex > 0 {
-            newIndex = appState.playlist.currentIndex - 1
-        } else if appState.playlist.repeatMode == .all {
-            newIndex = tracksCount - 1
-        } else {
-            return
-        }
-
-        appState.playlist.selectTrack(at: newIndex)
-        if let track = appState.playlist.currentTrack {
-            AudioEngine.shared.loadAndPlay(track.audioFile.url)
-        }
+        appState.goToPreviousTrack()
     }
 
     private func nextTrack() {
-        guard !appState.playlist.tracks.isEmpty else { return }
-
-        let tracksCount = appState.playlist.tracks.count
-        let newIndex: Int
-
-        if appState.playlist.currentIndex < tracksCount - 1 {
-            newIndex = appState.playlist.currentIndex + 1
-        } else if appState.playlist.repeatMode == .all {
-            newIndex = 0
-        } else {
-            return
-        }
-
-        appState.playlist.selectTrack(at: newIndex)
-        if let track = appState.playlist.currentTrack {
-            AudioEngine.shared.loadAndPlay(track.audioFile.url)
-        }
+        appState.goToNextTrack()
     }
 }
 
@@ -290,6 +251,7 @@ struct ProgressSlider: View {
     @Binding var value: Double
     let totalDuration: Double
     let bookmarks: [Bookmark]
+    let onBookmarkSeek: ((TimeInterval) -> Void)?
     let onEditingChanged: (Bool) -> Void
 
     @State private var isDragging = false
@@ -337,7 +299,7 @@ struct ProgressSlider: View {
                             .offset(x: geometry.size.width * ratio - 1)
                             .contentShape(Rectangle().size(width: 10, height: 14))
                             .onTapGesture {
-                                AudioEngine.shared.seek(to: bookmark.timestamp)
+                                onBookmarkSeek?(bookmark.timestamp)
                             }
                             .help(bookmark.label.isEmpty ? formatTime(bookmark.timestamp) : "\(bookmark.label) (\(formatTime(bookmark.timestamp)))")
                     }

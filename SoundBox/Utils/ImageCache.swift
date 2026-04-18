@@ -105,7 +105,7 @@ struct AsyncArtworkView: View {
     private func loadArtwork() {
         // Priority: embedded data > external URL
         if let data = embeddedData {
-            ImageCache.shared.loadImage(from: data, key: "embedded-\(data.count)") { img in
+            ImageCache.shared.loadImage(from: data, key: "embedded-\(data.hashValue)") { img in
                 self.image = img
             }
         } else if let url = artworkURL {
