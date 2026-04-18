@@ -15,18 +15,23 @@ struct PlayerControlBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 20) {
-            currentTrackInfo
-                .frame(width: 220, alignment: .leading)
+        GeometryReader { proxy in
+            let compact = proxy.size.width < 980
 
-            timelineSection
-                .frame(maxWidth: .infinity)
+            HStack(spacing: compact ? 12 : 20) {
+                currentTrackInfo
+                    .frame(width: compact ? 170 : 220, alignment: .leading)
 
-            rightControls
-                .frame(width: 220, alignment: .trailing)
+                timelineSection(compact: compact)
+                    .layoutPriority(1)
+
+                rightControls(compact: compact)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.horizontal, compact ? 12 : 20)
+            .padding(.vertical, 14)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
         .onAppear {
             sliderValue = playerState.currentTime
         }
@@ -71,13 +76,13 @@ struct PlayerControlBar: View {
         }
     }
 
-    private var timelineSection: some View {
-        HStack(spacing: 12) {
+    private func timelineSection(compact: Bool) -> some View {
+        HStack(spacing: compact ? 8 : 12) {
             Text(FormatUtils.formatTime(playerState.currentTime))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
-                .frame(width: 46, alignment: .trailing)
+                .frame(width: compact ? 40 : 46, alignment: .trailing)
 
             ProgressSlider(
                 value: $sliderValue,
@@ -104,18 +109,21 @@ struct PlayerControlBar: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
-                .frame(width: 46, alignment: .leading)
+                .frame(width: compact ? 40 : 46, alignment: .leading)
         }
     }
 
-    private var rightControls: some View {
+    private func rightControls(compact: Bool) -> some View {
         ViewThatFits(in: .horizontal) {
-            controlsRow(showSpeed: true, volumeWidth: 62)
-            controlsRow(showSpeed: false, volumeWidth: 46)
+            if !compact {
+                controlsRow(showRepeat: true, showBookmark: true, showSpeed: true, volumeWidth: 62)
+            }
+            controlsRow(showRepeat: true, showBookmark: true, showSpeed: false, volumeWidth: compact ? 42 : 46)
+            controlsRow(showRepeat: false, showBookmark: false, showSpeed: false, volumeWidth: 36)
         }
     }
 
-    private func controlsRow(showSpeed: Bool, volumeWidth: CGFloat) -> some View {
+    private func controlsRow(showRepeat: Bool, showBookmark: Bool, showSpeed: Bool, volumeWidth: CGFloat) -> some View {
         HStack(spacing: 8) {
             Button(action: previousTrack) {
                 Image(systemName: "backward.fill")
@@ -148,26 +156,30 @@ struct PlayerControlBar: View {
             .frame(width: 24, height: 24)
             .disabled(!hasTrack)
 
-            Button(action: toggleRepeatMode) {
-                Image(systemName: repeatModeIcon)
-                    .font(.caption)
-                    .foregroundStyle(appState.playlist.repeatMode == .none ? .secondary : Color.accentColor)
+            if showRepeat {
+                Button(action: toggleRepeatMode) {
+                    Image(systemName: repeatModeIcon)
+                        .font(.caption)
+                        .foregroundStyle(appState.playlist.repeatMode == .none ? .secondary : Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24, height: 24)
+                .help(repeatModeHelpText)
             }
-            .buttonStyle(.plain)
-            .frame(width: 24, height: 24)
-            .help(repeatModeHelpText)
 
-            Button(action: {
-                appState.showBookmarkOverlay = true
-            }) {
-                Image(systemName: "bookmark")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if showBookmark {
+                Button(action: {
+                    appState.showBookmarkOverlay = true
+                }) {
+                    Image(systemName: "bookmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24, height: 24)
+                .help("添加书签 (⌘B)")
+                .disabled(!hasTrack)
             }
-            .buttonStyle(.plain)
-            .frame(width: 24, height: 24)
-            .help("添加书签 (⌘B)")
-            .disabled(!hasTrack)
 
             Button(action: {
                 withAnimation {

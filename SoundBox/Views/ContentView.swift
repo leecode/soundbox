@@ -211,6 +211,9 @@ struct PlayerMainView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Keep blur/overlay strictly inside the center column bounds.
+        .clipped()
     }
 }
 
