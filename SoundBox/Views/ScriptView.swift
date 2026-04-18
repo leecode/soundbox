@@ -17,18 +17,24 @@ struct ScriptView: View {
             } else {
                 VStack(spacing: 12) {
                     Spacer()
-                    Image(systemName: "doc.text")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.tertiary)
+                    VStack(spacing: 10) {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 34))
+                            .foregroundStyle(.tertiary)
 
-                    Text("无台本文件")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+                        Text("无台本文件")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
 
-                    Text("未找到与音频文件同名的 .txt 台本文件")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.center)
+                        Text("未找到与音频文件同名的 .txt 台本文件")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 220)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 18)
+                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
