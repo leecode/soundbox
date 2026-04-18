@@ -14,7 +14,7 @@ struct BookmarkOverlay: View {
             Text("添加书签")
                 .font(.headline)
 
-            Text(formatTime(timestamp))
+            Text(FormatUtils.formatTime(timestamp))
                 .font(.system(.title3, design: .monospaced))
                 .foregroundStyle(.secondary)
 
@@ -44,12 +44,5 @@ struct BookmarkOverlay: View {
         .onAppear {
             isFocused = true
         }
-    }
-
-    private func formatTime(_ time: TimeInterval) -> String {
-        let totalSeconds = Int(time)
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }

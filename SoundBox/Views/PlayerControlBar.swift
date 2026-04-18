@@ -182,7 +182,7 @@ struct PlayerControlBar: View {
     private var timeAndVolume: some View {
         HStack(spacing: 16) {
             // 时间显示
-            Text("\(formatTime(playerState.currentTime)) / \(formatTime(playerState.totalDuration))")
+            Text("\(FormatUtils.formatTime(playerState.currentTime)) / \(FormatUtils.formatTime(playerState.totalDuration))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
@@ -225,12 +225,6 @@ struct PlayerControlBar: View {
         if volume < 0.33 { return "speaker.wave.1.fill" }
         if volume < 0.66 { return "speaker.wave.2.fill" }
         return "speaker.wave.3.fill"
-    }
-
-    private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 
     private func togglePlayback() {
@@ -301,7 +295,7 @@ struct ProgressSlider: View {
                             .onTapGesture {
                                 onBookmarkSeek?(bookmark.timestamp)
                             }
-                            .help(bookmark.label.isEmpty ? formatTime(bookmark.timestamp) : "\(bookmark.label) (\(formatTime(bookmark.timestamp)))")
+                            .help(bookmark.label.isEmpty ? FormatUtils.formatTime(bookmark.timestamp) : "\(bookmark.label) (\(FormatUtils.formatTime(bookmark.timestamp)))")
                     }
                 }
 
@@ -313,7 +307,7 @@ struct ProgressSlider: View {
                         .offset(x: geometry.size.width * hoverLocation - 0.5)
 
                     // 时间预览气泡
-                    Text(formatTime(hoverTime))
+                    Text(FormatUtils.formatTime(hoverTime))
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white)
                         .padding(.horizontal, 6)
@@ -362,11 +356,5 @@ struct ProgressSlider: View {
             }
         }
         .frame(height: 24)
-    }
-
-    private func formatTime(_ time: Double) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }

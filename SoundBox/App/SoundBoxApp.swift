@@ -454,7 +454,14 @@ extension AppState: AudioEngineDelegate {
             return
         }
 
+        // 尝试下一曲
+        let wasAtLastTrack = self.playlist.currentIndex >= self.playlist.tracks.count - 1
         goToNextTrack()
+
+        // 如果 goToNextTrack 没有切换（.none 模式，最后一曲），回到 stopped
+        if wasAtLastTrack && self.playerState.playbackState == .finished {
+            AudioEngine.shared.stop()
+        }
     }
 
     func audioEngine(_ engine: AudioEngine, didUpdateProgress progress: TimeInterval, duration: TimeInterval) {

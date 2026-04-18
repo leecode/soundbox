@@ -1,5 +1,6 @@
 import Foundation
 import AVFAudio
+import os.log
 
 // MARK: - Audio Engine Delegate
 protocol AudioEngineDelegate: AnyObject {
@@ -11,6 +12,7 @@ protocol AudioEngineDelegate: AnyObject {
 // MARK: - Audio Engine
 class AudioEngine {
     static let shared = AudioEngine()
+    private static let logger = Logger(subsystem: "com.soundbox", category: "AudioEngine")
 
     weak var delegate: AudioEngineDelegate?
 
@@ -85,6 +87,7 @@ class AudioEngine {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
+            // All state checks happen on main thread to avoid data races
             guard self.playbackToken == token else { return }
 
             if self.isPlaying {
@@ -108,7 +111,14 @@ class AudioEngine {
         guard !isPlaying, audioFile != nil else { return }
 
         if !audioEngine.isRunning {
-            try? audioEngine.start()
+            do {
+                try audioEngine.start()
+            } catch {
+                Self.logger.error("Failed to start audio engine on resume: \(error.localizedDescription)")
+                delegate?.audioEngine(self, didEncounterError: error)
+                delegate?.audioEngine(self, didChangeState: .error(error.localizedDescription))
+                return
+            }
         }
 
         playerNode.play()

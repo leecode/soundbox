@@ -23,6 +23,7 @@
 		A1000014 /* BookmarkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016; };
 		A1000015 /* BookmarkOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017; };
 		A1000016 /* ScriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000018; };
+		A1000017 /* FormatUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 		A2000016 /* BookmarkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkManager.swift; sourceTree = "<group>"; };
 		A2000017 /* BookmarkOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkOverlay.swift; sourceTree = "<group>"; };
 		A2000018 /* ScriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptView.swift; sourceTree = "<group>"; };
+		A2000019 /* FormatUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatUtils.swift; sourceTree = "<group>"; };
 		A3000001 /* SoundBox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundBox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -149,6 +151,7 @@
 			children = (
 				A2000010 /* FileScanner.swift */,
 				A2000014 /* ImageCache.swift */,
+				A2000019 /* FormatUtils.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -255,6 +258,7 @@
 				A1000014 /* BookmarkManager.swift in Sources */,
 				A1000015 /* BookmarkOverlay.swift in Sources */,
 				A1000016 /* ScriptView.swift in Sources */,
+				A1000017 /* FormatUtils.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

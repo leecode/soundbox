@@ -6,7 +6,7 @@ class FileScanner {
 
     // MARK: - Supported Extensions
     private var audioExtensions: [String] { LosslessDecoder.supportedExtensions }
-    private let subtitleExtensions = ["vtt", "srt"]
+    private let subtitleExtensions = ["vtt"]
     private let scriptExtensions = ["txt"]
 
     // Cap concurrent metadata reads to avoid disk thrashing on large files

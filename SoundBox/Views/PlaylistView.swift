@@ -94,6 +94,7 @@ struct PlaylistView: View {
                         }
                     }
                     .onMove { source, destination in
+                        guard searchText.isEmpty else { return }
                         appState.playlist.tracks.move(fromOffsets: source, toOffset: destination)
                     }
                 }

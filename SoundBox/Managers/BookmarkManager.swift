@@ -68,7 +68,11 @@ class BookmarkManager: ObservableObject {
         let savedVersion = (try? String(contentsOf: versionFile, encoding: .utf8)).flatMap(Int.init) ?? 0
         guard savedVersion == currentSchemaVersion else {
             // Schema mismatch or first launch: write version, start fresh
-            try? "\(currentSchemaVersion)".write(to: versionFile, atomically: true, encoding: .utf8)
+            do {
+                try "\(currentSchemaVersion)".write(to: versionFile, atomically: true, encoding: .utf8)
+            } catch {
+                Self.logger.error("Failed to write schema version: \(error.localizedDescription)")
+            }
             return
         }
 

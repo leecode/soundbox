@@ -27,6 +27,7 @@ struct AudioFormat: Equatable {
 // MARK: - Audio File
 struct AudioFile: Identifiable, Hashable {
     let id = UUID()
+    private static let logger = Logger(subsystem: "com.soundbox", category: "AudioFile")
     let url: URL
     let name: String
     let format: AudioFormat
@@ -45,7 +46,14 @@ struct AudioFile: Identifiable, Hashable {
         self.name = url.deletingPathExtension().lastPathComponent
         self.format = format
         self.duration = duration
-        self.fileSize = UInt64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        let fileSize: UInt64
+        do {
+            fileSize = UInt64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0)
+        } catch {
+            AudioFile.logger.error("Failed to read file size for \(url.lastPathComponent): \(error.localizedDescription)")
+            fileSize = 0
+        }
+        self.fileSize = fileSize
         self.subtitleURL = subtitleURL
         self.artworkURL = artworkURL
         self.scriptURL = scriptURL
@@ -65,9 +73,7 @@ struct AudioFile: Identifiable, Hashable {
     }
 
     var formattedDuration: String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        FormatUtils.formatTime(duration)
     }
 
     var formattedSize: String {

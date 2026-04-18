@@ -164,7 +164,7 @@ struct SubtitleItemRow: View {
 
                 Spacer()
 
-                Text(formatTime(item.cue.startTime))
+                Text(FormatUtils.formatTime(item.cue.startTime))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -183,12 +183,6 @@ struct SubtitleItemRow: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(isActive ? Color.accentColor.opacity(0.15) : Color.clear)
         )
-    }
-
-    private func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 
