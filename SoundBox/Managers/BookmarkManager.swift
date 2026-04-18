@@ -6,11 +6,19 @@ class BookmarkManager: ObservableObject {
     @Published var bookmarks: [Bookmark] = []
 
     private let maxBookmarks = 500
-    private let userDefaultsKey = "bookmarks"
-    private let schemaVersionKey = "bookmarksSchemaVersion"
     private let currentSchemaVersion = 1
 
+    private let storageDirectory: URL
+    private let bookmarksFile: URL
+    private let versionFile: URL
+
     init() {
+        // ~/Library/Application Support/SoundBox/
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        storageDirectory = appSupport.appendingPathComponent("SoundBox", isDirectory: true)
+        bookmarksFile = storageDirectory.appendingPathComponent("bookmarks.json")
+        versionFile = storageDirectory.appendingPathComponent("bookmarks.version")
+
         load()
     }
 
@@ -42,14 +50,23 @@ class BookmarkManager: ObservableObject {
     // MARK: - Persistence
 
     private func load() {
-        let savedVersion = UserDefaults.standard.integer(forKey: schemaVersionKey)
+        let fm = FileManager.default
+
+        // Ensure directory exists
+        if !fm.fileExists(atPath: storageDirectory.path) {
+            try? fm.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
+        }
+
+        // Check schema version
+        let savedVersion = (try? String(contentsOf: versionFile, encoding: .utf8)).flatMap(Int.init) ?? 0
         guard savedVersion == currentSchemaVersion else {
-            // Schema mismatch or first launch: start fresh
-            UserDefaults.standard.set(currentSchemaVersion, forKey: schemaVersionKey)
+            // Schema mismatch or first launch: write version, start fresh
+            try? "\(currentSchemaVersion)".write(to: versionFile, atomically: true, encoding: .utf8)
             return
         }
 
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
+        guard fm.fileExists(atPath: bookmarksFile.path),
+              let data = try? Data(contentsOf: bookmarksFile),
               let decoded = try? JSONDecoder().decode([Bookmark].self, from: data) else {
             return
         }
@@ -57,9 +74,17 @@ class BookmarkManager: ObservableObject {
     }
 
     private func save() {
-        if let data = try? JSONEncoder().encode(bookmarks) {
-            UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        let fm = FileManager.default
+
+        // Ensure directory exists
+        if !fm.fileExists(atPath: storageDirectory.path) {
+            try? fm.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         }
+
+        guard let data = try? JSONEncoder().encode(bookmarks) else { return }
+
+        // Atomic write via Data.write
+        try? data.write(to: bookmarksFile, options: .atomic)
     }
 
     private func trimIfNeeded() {
