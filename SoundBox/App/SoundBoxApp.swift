@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import MediaPlayer
+import AppKit
 
 private enum AppTheme: String, CaseIterable, Identifiable {
     case system
@@ -14,14 +15,6 @@ private enum AppTheme: String, CaseIterable, Identifiable {
         case .system: return "跟随系统"
         case .light: return "浅色"
         case .dark: return "深色"
-        }
-    }
-
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
         }
     }
 }
@@ -39,8 +32,14 @@ struct SoundBoxApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
-                .preferredColorScheme(selectedTheme.colorScheme)
                 .frame(minWidth: 900, minHeight: 680)
+                .onAppear {
+                    applyAppAppearance(theme: selectedTheme)
+                }
+                .onChange(of: appThemeRawValue) { _, newValue in
+                    let theme = AppTheme(rawValue: newValue) ?? .system
+                    applyAppAppearance(theme: theme)
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
@@ -129,6 +128,17 @@ struct SoundBoxApp: App {
                     }
                 }
             }
+        }
+    }
+
+    private func applyAppAppearance(theme: AppTheme) {
+        switch theme {
+        case .system:
+            NSApp.appearance = nil
+        case .light:
+            NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
         }
     }
 
