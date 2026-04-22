@@ -21,10 +21,10 @@ struct SubtitlePreviewPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Text("字幕预览")
-                    .font(.headline)
+                    .font(.title3)
+                    .fontWeight(.semibold)
 
                 Spacer()
 
@@ -37,23 +37,11 @@ struct SubtitlePreviewPanel: View {
                         .background(Color.secondary.opacity(0.2))
                         .cornerRadius(4)
                 }
-
-                Button(action: {
-                    withAnimation {
-                        onClose()
-                    }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.primary.opacity(0.05))
+            .padding(.top, 12)
+            .padding(.bottom, 10)
 
-            // Search field
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.caption)
@@ -72,14 +60,12 @@ struct SubtitlePreviewPanel: View {
                 }
             }
             .padding(8)
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(6)
+            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.bottom, 8)
 
             Divider()
 
-            // Content
             if subtitlePreviewManager.isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
@@ -92,17 +78,18 @@ struct SubtitlePreviewPanel: View {
             } else if filteredItems.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "text.bubble")
-                        .font(.system(size: 40))
+                        .font(.system(size: 34))
                         .foregroundStyle(.tertiary)
 
                     if searchText.isEmpty {
                         Text("暂无字幕")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
                         Text("播放列表中的音频文件没有关联的字幕文件")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .multilineTextAlignment(.center)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 220)
                     } else {
                         Text("未找到匹配的字幕")
                             .font(.body)
@@ -130,8 +117,7 @@ struct SubtitlePreviewPanel: View {
                 }
             }
         }
-        .frame(width: 320)
-        .background(.bar)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func isItemActive(_ item: SubtitlePreviewItem) -> Bool {
@@ -151,6 +137,7 @@ struct SubtitlePreviewPanel: View {
 struct SubtitleItemRow: View {
     let item: SubtitlePreviewItem
     let isActive: Bool
+    @State private var isHovering = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -181,8 +168,15 @@ struct SubtitleItemRow: View {
         .padding(.horizontal, 8)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isActive ? Color.accentColor.opacity(0.15) : Color.clear)
+                .fill(
+                    isActive
+                    ? Color.accentColor.opacity(0.15)
+                    : (isHovering ? Color.primary.opacity(0.06) : Color.clear)
+                )
         )
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 

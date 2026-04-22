@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoundBox Draft</title>
+  <style>
+    :root {
+      --accent: #007aff;
+      --bookmark: #ff9500;
+      --bg: #0f1218;
+      --surface: rgba(255, 255, 255, 0.08);
+      --surface-strong: rgba(255, 255, 255, 0.14);
+      --text: rgba(255, 255, 255, 0.95);
+      --text-secondary: rgba(255, 255, 255, 0.72);
+      --text-tertiary: rgba(255, 255, 255, 0.48);
+      --sidebar-w: 280px;
+      --panel-w: 320px;
+      --bar-h: 80px;
+      --radius-s: 8px;
+      --radius-m: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at 70% 20%, #354263 0%, #1a2235 28%, #10151f 58%, #0a0d14 100%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .window {
+      width: min(1400px, 100%);
+      min-height: 680px;
+      height: 84vh;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(22px);
+      background: rgba(12, 15, 23, 0.78);
+      display: grid;
+      grid-template-rows: 1fr var(--bar-h);
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr var(--panel-w);
+      min-height: 0;
+    }
+
+    .sidebar, .main, .panel {
+      padding: 24px;
+      min-height: 0;
+    }
+
+    .sidebar {
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .playlist-header {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      margin-bottom: 16px;
+      letter-spacing: 0.04em;
+    }
+
+    .track {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-radius: var(--radius-s);
+      margin-bottom: 8px;
+      background: transparent;
+    }
+
+    .track.active { background: var(--surface); border: 1px solid rgba(122, 167, 255, 0.3); }
+
+    .thumb {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(140deg, #96a8c4 0%, #6f7a90 45%, #3f4b67 100%);
+    }
+
+    .track-title { font-size: 14px; line-height: 1.2; }
+    .track-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+    .main {
+      position: relative;
+      padding: 30px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 20px;
+      overflow: hidden;
+    }
+
+    .hero {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .cover {
+      width: 200px;
+      height: 200px;
+      border-radius: var(--radius-m);
+      background: linear-gradient(140deg, #c4d4ef 0%, #7f8ea8 42%, #2b334a 100%);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.4);
+    }
+
+    .track-info h1 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .track-info p {
+      margin: 8px 0;
+      color: var(--text-secondary);
+      font-size: 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(0, 122, 255, 0.18);
+      border: 1px solid rgba(0, 122, 255, 0.45);
+      color: #b6d6ff;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle-overlay {
+      align-self: end;
+      margin-bottom: 24px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-m);
+      backdrop-filter: blur(10px);
+      padding: 16px 20px;
+      font-size: 20px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .panel {
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.035);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .tab {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      padding: 8px;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .panel-list {
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 2px;
+    }
+
+    .item {
+      background: var(--surface);
+      border-radius: var(--radius-s);
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .item-time {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .control-bar {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(18, 22, 34, 0.9);
+      padding: 14px 20px;
+      display: grid;
+      grid-template-columns: 220px 1fr 220px;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .now-playing {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .now-title {
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-wrap {
+      display: grid;
+      grid-template-columns: 46px 1fr 46px;
+      gap: 12px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timeline {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.17);
+      position: relative;
+      overflow: visible;
+    }
+
+    .fill {
+      height: 100%;
+      width: 38%;
+      border-radius: inherit;
+      background: var(--accent);
+    }
+
+    .bookmark {
+      position: absolute;
+      top: -2px;
+      width: 2px;
+      height: 10px;
+      background: var(--bookmark);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+    }
+
+    .bookmark.b1 { left: 22%; }
+    .bookmark.b2 { left: 51%; }
+    .bookmark.b3 { left: 76%; }
+
+    .controls {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .play {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--accent);
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1200px) {
+      .content { grid-template-columns: var(--sidebar-w) 1fr; }
+      .panel { display: none; }
+      .control-bar { grid-template-columns: 180px 1fr 160px; }
+    }
+
+    @media (max-width: 960px) {
+      body { padding: 10px; }
+      .window { height: 92vh; }
+      .content { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main { padding: 20px; }
+      .hero { flex-direction: column; align-items: flex-start; }
+      .cover { width: 160px; height: 160px; }
+      .subtitle-overlay { font-size: 17px; }
+      .control-bar {
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+        gap: 10px;
+        padding: 10px 12px;
+      }
+      .controls { justify-self: start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="window" role="img" aria-label="SoundBox refined minimal draft">
+    <div class="content">
+      <aside class="sidebar">
+        <div class="playlist-header">播放列表 · 12 条</div>
+        <div class="track active"><div class="thumb"></div><div><div class="track-title">夜雨と囁きの章</div><div class="track-meta">32:14 · VTT</div></div></div>
+        <div class="track"><div class="thumb"></div><div><div class="track-title">二人だけの深夜配信</div><div class="track-meta">41:29 · Hi-Res</div></div></div>
+        <div class="track"><div class="thumb"></div><div><div class="track-title">耳元で読む物語</div><div class="track-meta">28:03 · VTT</div></div></div>
+        <div class="track"><div class="thumb"></div><div><div class="track-title">晨雾中的问候</div><div class="track-meta">19:52 · 无字幕</div></div></div>
+      </aside>
+
+      <main class="main">
+        <section class="hero">
+          <div class="cover" aria-hidden="true"></div>
+          <div class="track-info">
+            <h1>夜雨と囁きの章</h1>
+            <p>CV: 逢坂凛 · FLAC 96kHz / 24bit</p>
+            <span class="badge">HI-RES</span>
+          </div>
+        </section>
+
+        <section class="subtitle-overlay">
+          今晚我们不赶时间，就让每一句台词都慢慢落在你耳边。<br />
+          这一刻，你只需要听见自己。
+        </section>
+      </main>
+
+      <aside class="panel">
+        <div class="tabs">
+          <div class="tab active">字幕</div>
+          <div class="tab">台本</div>
+          <div class="tab">书签</div>
+        </div>
+        <div class="panel-list">
+          <article class="item"><div class="item-time">00:15</div>今晚我们不赶时间。</article>
+          <article class="item"><div class="item-time">01:42</div>呼吸慢下来，跟着我的声音。</article>
+          <article class="item"><div class="item-time">03:08</div>你会发现，安静本身就有重量。</article>
+          <article class="item"><div class="item-time">05:17</div>如果想记住这里，可以打个书签。</article>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="control-bar">
+      <div class="now-playing">
+        <div class="thumb"></div>
+        <div>
+          <div class="now-title">夜雨と囁きの章</div>
+          <div class="track-meta">CV: 逢坂凛</div>
+        </div>
+      </div>
+
+      <div class="timeline-wrap">
+        <span>04:22</span>
+        <div class="timeline">
+          <div class="fill"></div>
+          <span class="bookmark b1"></span>
+          <span class="bookmark b2"></span>
+          <span class="bookmark b3"></span>
+        </div>
+        <span>12:34</span>
+      </div>
+
+      <div class="controls">
+        <span>1.0x</span>
+        <span>⏮</span>
+        <span class="play">▶</span>
+        <span>⏭</span>
+        <span>🔊</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoundBox Empty State Draft</title>
+  <style>
+    :root {
+      --accent: #007aff;
+      --bookmark: #ff9500;
+      --text: rgba(255, 255, 255, 0.95);
+      --text-secondary: rgba(255, 255, 255, 0.72);
+      --text-tertiary: rgba(255, 255, 255, 0.5);
+      --surface: rgba(255, 255, 255, 0.08);
+      --sidebar-w: 280px;
+      --panel-w: 320px;
+      --bar-h: 80px;
+      --radius-s: 8px;
+      --radius-m: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 65% 18%, #2c3b59 0%, #182033 30%, #101725 62%, #0a0f18 100%);
+    }
+
+    .window {
+      width: min(1400px, 100%);
+      min-height: 680px;
+      height: 84vh;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(22px);
+      background: rgba(12, 15, 23, 0.78);
+      display: grid;
+      grid-template-rows: 1fr var(--bar-h);
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr var(--panel-w);
+      min-height: 0;
+    }
+
+    .sidebar, .main, .panel {
+      min-height: 0;
+      padding: 24px;
+    }
+
+    .sidebar {
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .main {
+      padding: 30px;
+      border-left: 1px solid rgba(255, 255, 255, 0.03);
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
+      display: grid;
+      align-items: center;
+    }
+
+    .panel {
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .playlist-header {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      margin-bottom: 16px;
+      letter-spacing: 0.04em;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .tab {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      padding: 8px;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab.active {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .empty {
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      text-align: center;
+      gap: 12px;
+      min-height: 220px;
+      padding: 20px;
+      border-radius: var(--radius-m);
+      border: 1px dashed rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .empty.compact {
+      min-height: 180px;
+      padding: 16px;
+      gap: 8px;
+    }
+
+    .empty-icon {
+      font-size: 34px;
+      line-height: 1;
+      color: var(--text-tertiary);
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 550;
+      margin: 0;
+    }
+
+    .empty-desc {
+      margin: 0;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      line-height: 1.45;
+      max-width: 380px;
+    }
+
+    .btn {
+      margin-top: 2px;
+      border: 1px solid rgba(0, 122, 255, 0.5);
+      background: rgba(0, 122, 255, 0.2);
+      color: #d5e9ff;
+      padding: 8px 14px;
+      font-size: 13px;
+      border-radius: var(--radius-s);
+      font-weight: 600;
+    }
+
+    .control-bar {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(18, 22, 34, 0.9);
+      padding: 14px 20px;
+      display: grid;
+      grid-template-columns: 220px 1fr 220px;
+      align-items: center;
+      gap: 20px;
+      color: var(--text-tertiary);
+      font-size: 13px;
+    }
+
+    .placeholder-line {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .placeholder-line::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 16%;
+      background: rgba(0, 122, 255, 0.55);
+    }
+
+    .mono { font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 1200px) {
+      .content { grid-template-columns: var(--sidebar-w) 1fr; }
+      .panel { display: none; }
+    }
+
+    @media (max-width: 960px) {
+      body { padding: 10px; }
+      .window { height: 92vh; }
+      .content { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main { padding: 20px; }
+      .control-bar { grid-template-columns: 1fr; gap: 10px; padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="window" role="img" aria-label="SoundBox 空状态草稿">
+    <div class="content">
+      <aside class="sidebar">
+        <div class="playlist-header">播放列表 · 0 条</div>
+        <section class="empty compact">
+          <div class="empty-icon">🎵</div>
+          <h2 class="empty-title">还没有音频</h2>
+          <p class="empty-desc">添加本地文件夹后，作品会自动出现在这里。</p>
+          <button class="btn">选择文件夹</button>
+        </section>
+      </aside>
+
+      <main class="main">
+        <section class="empty">
+          <div class="empty-icon">🗂</div>
+          <h1 class="empty-title">开始你的离线语音库</h1>
+          <p class="empty-desc">导入作品目录后，SoundBox 会自动识别音频并匹配同名 VTT 字幕文件。</p>
+          <button class="btn">导入作品文件夹</button>
+        </section>
+      </main>
+
+      <aside class="panel">
+        <div class="tabs">
+          <div class="tab active">字幕</div>
+          <div class="tab">台本</div>
+          <div class="tab">书签</div>
+        </div>
+        <section class="empty compact" style="min-height: 220px;">
+          <div class="empty-icon">💬</div>
+          <h2 class="empty-title">暂无内容</h2>
+          <p class="empty-desc">播放带字幕的音频后，这里会显示当前字幕、台本或书签。</p>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="control-bar">
+      <span>未选择音频</span>
+      <div class="placeholder-line"></div>
+      <span class="mono">00:00 / 00:00</span>
+    </footer>
+  </div>
+</body>
+</html>

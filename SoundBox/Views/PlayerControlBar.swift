@@ -10,9 +10,80 @@ struct PlayerControlBar: View {
         appState.currentFileBookmarks()
     }
 
+    private var hasTrack: Bool {
+        !appState.playlist.tracks.isEmpty
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // 进度条
+        GeometryReader { proxy in
+            let compact = proxy.size.width < 980
+
+            HStack(spacing: compact ? 12 : 20) {
+                currentTrackInfo
+                    .frame(width: compact ? 170 : 220, alignment: .leading)
+
+                timelineSection(compact: compact)
+                    .layoutPriority(1)
+
+                rightControls(compact: compact)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.horizontal, compact ? 12 : 20)
+            .padding(.vertical, 14)
+        }
+        .onAppear {
+            sliderValue = playerState.currentTime
+        }
+    }
+
+    private var currentTrackInfo: some View {
+        HStack(spacing: 10) {
+            if let track = appState.playlist.currentTrack {
+                AsyncArtworkView(
+                    embeddedData: track.audioFile.embeddedArtworkData,
+                    artworkURL: track.audioFile.artworkURL,
+                    cornerRadius: DesignTokens.Radius.small
+                )
+                .frame(width: 36, height: 36)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(track.title)
+                        .font(.subheadline)
+                        .lineLimit(1)
+
+                    Text(track.artist ?? "未知艺术家")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } else {
+                Image(systemName: "music.note")
+                    .font(.body)
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 36, height: 36)
+                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("未选择音频")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("请先导入文件夹")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+    }
+
+    private func timelineSection(compact: Bool) -> some View {
+        HStack(spacing: compact ? 8 : 12) {
+            Text(FormatUtils.formatTime(playerState.currentTime))
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+                .frame(width: compact ? 40 : 46, alignment: .trailing)
+
             ProgressSlider(
                 value: $sliderValue,
                 totalDuration: playerState.totalDuration,
@@ -27,127 +98,121 @@ struct PlayerControlBar: View {
                     }
                 }
             )
-            .onChange(of: playerState.currentTime) { oldValue, newValue in
+            .onChange(of: playerState.currentTime) { _, newValue in
                 if !isDraggingSlider {
                     sliderValue = newValue
                 }
             }
+            .disabled(!hasTrack)
 
-            HStack(alignment: .center, spacing: 24) {
-                // 左侧：当前曲目信息
-                currentTrackInfo
-                    .frame(width: 200, alignment: .leading)
-
-                Spacer()
-
-                // 中间：播放控制
-                playbackControls
-                    .frame(maxHeight: .infinity)
-
-                Spacer()
-
-                // 右侧：时间和音量
-                timeAndVolume
-                    .frame(width: 200, alignment: .trailing)
-            }
-            .frame(maxHeight: .infinity)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
-        }
-        .frame(maxHeight: .infinity)
-        .padding(.horizontal, 24)
-    }
-
-    // MARK: - Current Track Info
-    private var currentTrackInfo: some View {
-        HStack(spacing: 12) {
-            if let track = appState.playlist.currentTrack {
-                // 缩略图
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.accentColor.opacity(0.2))
-                    .frame(width: 48, height: 48)
-                    .overlay {
-                        Image(systemName: "waveform")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
-                    }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(track.title)
-                        .font(.body)
-                        .lineLimit(1)
-
-                    if let artist = track.artist {
-                        Text(artist)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-            }
+            Text(FormatUtils.formatTime(playerState.totalDuration))
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+                .frame(width: compact ? 40 : 46, alignment: .leading)
         }
     }
 
-    // MARK: - Playback Controls
-    private var playbackControls: some View {
-        HStack(spacing: 20) {
-            // 上一曲
+    private func rightControls(compact: Bool) -> some View {
+        ViewThatFits(in: .horizontal) {
+            if !compact {
+                controlsRow(showRepeat: true, showBookmark: true, showSpeed: true, volumeWidth: 62)
+            }
+            controlsRow(showRepeat: true, showBookmark: true, showSpeed: false, volumeWidth: compact ? 42 : 46)
+            controlsRow(showRepeat: false, showBookmark: false, showSpeed: false, volumeWidth: 36)
+        }
+    }
+
+    private func controlsRow(showRepeat: Bool, showBookmark: Bool, showSpeed: Bool, volumeWidth: CGFloat) -> some View {
+        HStack(spacing: 8) {
             Button(action: previousTrack) {
                 Image(systemName: "backward.fill")
-                    .font(.title3)
+                    .font(.caption)
             }
             .buttonStyle(.plain)
-            .frame(width: 44, height: 44)
-            .disabled(appState.playlist.tracks.isEmpty)
+            .frame(width: 24, height: 24)
+            .disabled(!hasTrack)
 
-            // 播放/暂停
             Button(action: togglePlayback) {
                 ZStack {
                     Circle()
                         .fill(Color.accentColor)
-                        .frame(width: 48, height: 48)
+                        .frame(width: 34, height: 34)
 
                     Image(systemName: playerState.playbackState.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                        .offset(x: playerState.playbackState.isPlaying ? 0 : 2)
+                        .font(.caption)
+                        .foregroundStyle(.white)
+                        .offset(x: playerState.playbackState.isPlaying ? 0 : 1)
                 }
             }
             .buttonStyle(.plain)
-            .offset(y: -2)
-            .disabled(appState.playlist.tracks.isEmpty)
+            .disabled(!hasTrack)
 
-            // 下一曲
             Button(action: nextTrack) {
                 Image(systemName: "forward.fill")
-                    .font(.title3)
+                    .font(.caption)
             }
             .buttonStyle(.plain)
-            .frame(width: 44, height: 44)
-            .disabled(appState.playlist.tracks.isEmpty)
+            .frame(width: 24, height: 24)
+            .disabled(!hasTrack)
 
-            // 循环模式
-            Button(action: toggleRepeatMode) {
-                Image(systemName: repeatModeIcon)
-                    .font(.title3)
-                    .foregroundColor(appState.playlist.repeatMode == .none ? .secondary : .accentColor)
+            if showRepeat {
+                Button(action: toggleRepeatMode) {
+                    Image(systemName: repeatModeIcon)
+                        .font(.caption)
+                        .foregroundStyle(appState.playlist.repeatMode == .none ? .secondary : Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24, height: 24)
+                .help(repeatModeHelpText)
             }
-            .buttonStyle(.plain)
-            .frame(width: 44, height: 44)
-            .help(repeatModeHelpText)
 
-            // 书签
+            if showBookmark {
+                Button(action: {
+                    appState.showBookmarkOverlay = true
+                }) {
+                    Image(systemName: "bookmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24, height: 24)
+                .help("添加书签 (⌘B)")
+                .disabled(!hasTrack)
+            }
+
             Button(action: {
-                appState.showBookmarkOverlay = true
+                withAnimation {
+                    appState.showSubtitlePanel.toggle()
+                }
             }) {
-                Image(systemName: "bookmark")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                Image(systemName: "text.bubble")
+                    .font(.caption)
+                    .foregroundStyle(appState.showSubtitlePanel ? Color.accentColor : .secondary)
             }
             .buttonStyle(.plain)
-            .frame(width: 44, height: 44)
-            .help("添加书签 (⌘B)")
-            .disabled(appState.playlist.tracks.isEmpty)
+            .frame(width: 24, height: 24)
+            .help("字幕预览 (⌘S)")
+            .opacity(appState.subtitlePreviewManager.items.isEmpty ? 0.35 : 1.0)
+            .disabled(appState.subtitlePreviewManager.items.isEmpty)
+
+            Image(systemName: volumeIcon)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 14)
+
+            Slider(value: $playerState.volume, in: 0...1)
+                .frame(width: volumeWidth)
+                .onChange(of: playerState.volume) { _, newValue in
+                    AudioEngine.shared.setVolume(Float(newValue))
+                }
+
+            if showSpeed {
+                Text(String(format: "%.1fx", playerState.playbackRate))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 34)
+            }
         }
     }
 
@@ -175,47 +240,6 @@ struct PlayerControlBar: View {
             appState.playlist.repeatMode = .one
         case .one:
             appState.playlist.repeatMode = .none
-        }
-    }
-
-    // MARK: - Time and Volume
-    private var timeAndVolume: some View {
-        HStack(spacing: 16) {
-            // 时间显示
-            Text("\(FormatUtils.formatTime(playerState.currentTime)) / \(FormatUtils.formatTime(playerState.totalDuration))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .frame(width: 100, alignment: .center)
-
-            // 字幕预览按钮
-            Button(action: {
-                withAnimation {
-                    appState.showSubtitlePanel.toggle()
-                }
-            }) {
-                Image(systemName: "text.bubble")
-                    .font(.caption)
-                    .foregroundStyle(appState.showSubtitlePanel ? Color.accentColor : .secondary)
-            }
-            .buttonStyle(.plain)
-            .help("字幕预览 (⌘S)")
-            .opacity(appState.subtitlePreviewManager.items.isEmpty ? 0.3 : 1.0)
-            .disabled(appState.subtitlePreviewManager.items.isEmpty)
-
-            // 音量
-            HStack(spacing: 8) {
-                Image(systemName: volumeIcon)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 16)
-
-                Slider(value: $playerState.volume, in: 0...1)
-                    .frame(width: 80)
-                    .onChange(of: playerState.volume) { oldValue, newValue in
-                        AudioEngine.shared.setVolume(Float(newValue))
-                    }
-            }
         }
     }
 
@@ -268,28 +292,24 @@ struct ProgressSlider: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                // 扩大点击区域
                 Color.clear
                     .frame(height: 24)
                     .contentShape(Rectangle())
 
-                // 背景轨道
                 RoundedRectangle(cornerRadius: isHovering || isDragging ? 3 : 2)
-                    .fill(Color.secondary.opacity(0.3))
-                    .frame(height: isHovering || isDragging ? 6 : 4)
+                    .fill(Color.secondary.opacity(0.28))
+                    .frame(height: isHovering || isDragging ? DesignTokens.Slider.hoverHeight : DesignTokens.Slider.normalHeight)
 
-                // 已播放进度
                 RoundedRectangle(cornerRadius: isHovering || isDragging ? 3 : 2)
                     .fill(Color.accentColor)
-                    .frame(width: geometry.size.width * progress, height: isHovering || isDragging ? 6 : 4)
+                    .frame(width: geometry.size.width * progress, height: isHovering || isDragging ? DesignTokens.Slider.hoverHeight : DesignTokens.Slider.normalHeight)
 
-                // 书签标记
                 ForEach(bookmarks) { bookmark in
                     let ratio = CGFloat((bookmark.timestamp - range.lowerBound) / (range.upperBound - range.lowerBound))
                     if ratio > 0 && ratio < 1 {
                         Rectangle()
-                            .fill(Color.orange.opacity(0.8))
-                            .frame(width: 2, height: isHovering || isDragging ? 10 : 6)
+                            .fill(DesignTokens.Colors.bookmark)
+                            .frame(width: DesignTokens.Slider.bookmarkWidth, height: DesignTokens.Slider.bookmarkHeight)
                             .offset(x: geometry.size.width * ratio - 1)
                             .contentShape(Rectangle().size(width: 10, height: 14))
                             .onTapGesture {
@@ -299,31 +319,30 @@ struct ProgressSlider: View {
                     }
                 }
 
-                // 悬停时显示预览线
                 if isHovering && !isDragging {
                     Rectangle()
-                        .fill(Color.primary.opacity(0.3))
+                        .fill(Color.primary.opacity(0.28))
                         .frame(width: 1, height: 10)
                         .offset(x: geometry.size.width * hoverLocation - 0.5)
 
-                    // 时间预览气泡
                     Text(FormatUtils.formatTime(hoverTime))
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.black.opacity(0.75))
-                        .cornerRadius(4)
+                        .background(Color.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 4))
                         .offset(
                             x: min(max(geometry.size.width * hoverLocation - 20, 0), geometry.size.width - 40),
                             y: -20
                         )
                 }
 
-                // 拖拽手柄
                 Circle()
                     .fill(Color.white)
-                    .frame(width: isDragging ? 14 : (isHovering ? 12 : 0), height: isDragging ? 14 : (isHovering ? 12 : 0))
+                    .frame(
+                        width: isDragging ? DesignTokens.Slider.draggingHandleSize : (isHovering ? DesignTokens.Slider.handleSize : 0),
+                        height: isDragging ? DesignTokens.Slider.draggingHandleSize : (isHovering ? DesignTokens.Slider.handleSize : 0)
+                    )
                     .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                     .offset(x: geometry.size.width * progress - (isDragging ? 7 : (isHovering ? 6 : 0)))
                     .opacity(isHovering || isDragging ? 1 : 0)
@@ -349,7 +368,8 @@ struct ProgressSlider: View {
                 switch phase {
                 case .active(let location):
                     isHovering = true
-                    hoverLocation = location.x / geometry.size.width
+                    let normalized = location.x / max(geometry.size.width, 1)
+                    hoverLocation = min(max(normalized, 0), 1)
                 case .ended:
                     isHovering = false
                 }

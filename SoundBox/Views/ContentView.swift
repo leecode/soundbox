@@ -1,42 +1,72 @@
 import SwiftUI
 
+enum DesignTokens {
+    enum Layout {
+        static let sidebarWidth: CGFloat = 280
+        static let sidePanelWidth: CGFloat = 320
+        static let controlBarHeight: CGFloat = 80
+        static let mainPadding: CGFloat = 30
+        static let heroGap: CGFloat = 24
+        static let heroCoverSize: CGFloat = 200
+        static let compactHeroThreshold: CGFloat = 560
+    }
+
+    enum Radius {
+        static let small: CGFloat = 8
+        static let medium: CGFloat = 12
+    }
+
+    enum Spacing {
+        static let small: CGFloat = 8
+        static let medium: CGFloat = 12
+        static let xlarge: CGFloat = 24
+    }
+
+    enum Slider {
+        static let normalHeight: CGFloat = 4
+        static let hoverHeight: CGFloat = 6
+        static let bookmarkWidth: CGFloat = 2
+        static let bookmarkHeight: CGFloat = 10
+        static let handleSize: CGFloat = 12
+        static let draggingHandleSize: CGFloat = 14
+    }
+
+    enum Colors {
+        static let bookmark = Color(red: 1.0, green: 0.58, blue: 0.0)
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
         ZStack {
-            // 背景
             Color(nsColor: .windowBackgroundColor)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // 主内容区
                 HStack(spacing: 0) {
-                    // 左侧：播放列表
                     PlaylistView()
-                        .frame(width: 280)
-                        .background(Color.primary.opacity(0.05))
+                        .frame(width: DesignTokens.Layout.sidebarWidth)
+                        .background(.regularMaterial)
 
-                    // 分隔线
                     Divider()
 
-                    // 字幕/台本面板
-                    if appState.showSubtitlePanel {
-                        SidePanelView()
-                        Divider()
-                    }
-
-                    // 右侧：播放器主界面
                     PlayerMainView()
-                }
 
-                // 底部：播放控制栏
+                    if appState.showSubtitlePanel {
+                        Divider()
+                        SidePanelView()
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 PlayerControlBar(playerState: appState.playerState)
-                    .frame(height: 80)
+                    .frame(height: DesignTokens.Layout.controlBarHeight)
                     .background(.bar)
             }
 
-            // 书签添加浮层
             if appState.showBookmarkOverlay {
                 Color.black.opacity(0.2)
                     .ignoresSafeArea()
@@ -56,11 +86,10 @@ struct ContentView: View {
                 )
             }
 
-            // 错误提示 toast
             if let errorMessage = appState.errorMessage {
                 VStack {
                     Spacer()
-                    HStack {
+                    HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.yellow)
                         Text(errorMessage)
@@ -68,7 +97,7 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
                     .padding(.bottom, 100)
                     .onAppear {
@@ -79,6 +108,7 @@ struct ContentView: View {
                 }
             }
         }
+        .animation(.easeInOut, value: appState.showSubtitlePanel)
     }
 }
 
@@ -91,30 +121,46 @@ struct SidePanelView: View {
         case subtitles = "字幕"
         case script = "台本"
         case bookmarks = "书签"
+
+        var iconName: String {
+            switch self {
+            case .subtitles: return "text.bubble"
+            case .script: return "doc.text"
+            case .bookmarks: return "bookmark"
+            }
+        }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            // 标签栏
             HStack(spacing: 0) {
                 ForEach(SideTab.allCases, id: \.self) { tab in
                     Button(action: { selectedTab = tab }) {
-                        Text(tab.rawValue)
-                            .font(.subheadline)
-                            .fontWeight(selectedTab == tab ? .semibold : .regular)
-                            .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                        VStack(spacing: 6) {
+                            HStack(spacing: 4) {
+                                Image(systemName: tab.iconName)
+                                    .font(.caption)
+                                Text(tab.rawValue)
+                                    .font(.subheadline)
+                            }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(selectedTab == tab ? Color.primary.opacity(0.05) : Color.clear)
+                            .padding(.top, 2)
+
+                            Rectangle()
+                                .fill(selectedTab == tab ? Color.accentColor : Color.clear)
+                                .frame(height: 2)
+                        }
+                        .foregroundStyle(selectedTab == tab ? Color.accentColor : .secondary)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(tab.rawValue)
                 }
             }
-            .background(Color.primary.opacity(0.03))
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
 
-            Divider()
-
-            // 内容
             switch selectedTab {
             case .subtitles:
                 SubtitlePreviewPanel(
@@ -130,8 +176,8 @@ struct SidePanelView: View {
                 BookmarkListView()
             }
         }
-        .frame(width: 320)
-        .background(.bar)
+        .frame(width: DesignTokens.Layout.sidePanelWidth)
+        .background(.regularMaterial)
     }
 }
 
@@ -140,70 +186,153 @@ struct PlayerMainView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
-        VStack(spacing: 20) {
-            if let track = appState.playlist.currentTrack {
-                // 当前播放信息
-                CurrentTrackView(track: track)
+        GeometryReader { proxy in
+            Group {
+                if let track = appState.playlist.currentTrack {
+                    let isCompact = proxy.size.width < DesignTokens.Layout.compactHeroThreshold
 
-                // 字幕显示
-                SubtitleView()
-            } else {
-                // 空状态
-                EmptyStateView()
+                    VStack(spacing: 0) {
+                        CurrentTrackHeroView(track: track, isCompact: isCompact)
+                            .padding(.top, DesignTokens.Layout.mainPadding)
+                            .padding(.horizontal, DesignTokens.Layout.mainPadding)
+
+                        Spacer(minLength: 20)
+
+                        SubtitleView()
+                            .padding(.horizontal, DesignTokens.Layout.mainPadding)
+                            .padding(.bottom, DesignTokens.Spacing.xlarge)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background {
+                        CoverBlurBackground(track: track)
+                    }
+                } else {
+                    EmptyStateView()
+                }
             }
-
-            Spacer()
         }
-        .padding(30)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Keep blur/overlay strictly inside the center column bounds.
+        .clipped()
     }
 }
 
-// MARK: - Current Track View
-struct CurrentTrackView: View {
+// MARK: - Cover Art Blur Background
+struct CoverBlurBackground: View {
     let track: Track
+    @State private var image: NSImage?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 12) {
-            // 封面图或波形占位（异步加载，优先使用内嵌封面）
-            AsyncArtworkView(
-                embeddedData: track.audioFile.embeddedArtworkData,
-                artworkURL: track.audioFile.artworkURL
-            )
-            .frame(width: 200, height: 200)
-
-            // 音频格式信息
-            HStack(spacing: 8) {
-                if track.audioFile.format.isHiRes {
-                    Text("Hi-Res")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(4)
-                }
-
-                Text(track.audioFile.format.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        ZStack {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .blur(radius: 60)
+                    .opacity(colorScheme == .dark ? 0.6 : 0.4)
+                    .id(track.id)
+                    .transition(.opacity)
+            } else {
+                RadialGradient(
+                    colors: [Color.accentColor.opacity(0.08), Color.orange.opacity(0.06)],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 420
+                )
+                .id(track.id)
+                .transition(.opacity)
             }
 
+            Color.black.opacity(colorScheme == .dark ? 0.28 : 0.12)
+        }
+        .clipped()
+        .animation(.easeInOut, value: track.id)
+        .onAppear { loadImage() }
+        .onChange(of: track.id) { _, _ in loadImage() }
+    }
+
+    private func loadImage() {
+        image = nil
+        if let data = track.audioFile.embeddedArtworkData {
+            ImageCache.shared.loadImage(from: data, key: "embedded-\(data.hashValue)") { img in
+                withAnimation(.easeInOut) { self.image = img }
+            }
+        } else if let url = track.audioFile.artworkURL {
+            ImageCache.shared.loadImage(from: url) { img in
+                withAnimation(.easeInOut) { self.image = img }
+            }
+        }
+    }
+}
+
+// MARK: - Current Track Hero View
+struct CurrentTrackHeroView: View {
+    let track: Track
+    let isCompact: Bool
+
+    var body: some View {
+        Group {
+            if isCompact {
+                VStack(spacing: DesignTokens.Spacing.medium) {
+                    coverView
+                    metaView(alignment: .center, textAlignment: .center)
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                HStack(alignment: .center, spacing: DesignTokens.Layout.heroGap) {
+                    coverView
+                    metaView(alignment: .leading, textAlignment: .leading)
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    private var coverView: some View {
+        AsyncArtworkView(
+            embeddedData: track.audioFile.embeddedArtworkData,
+            artworkURL: track.audioFile.artworkURL,
+            cornerRadius: DesignTokens.Radius.medium
+        )
+        .frame(width: DesignTokens.Layout.heroCoverSize, height: DesignTokens.Layout.heroCoverSize)
+        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
+    }
+
+    private func metaView(alignment: HorizontalAlignment, textAlignment: TextAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 10) {
             Text(track.title)
                 .font(.title2)
                 .fontWeight(.semibold)
                 .lineLimit(2)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(textAlignment)
 
-            if let artist = track.artist {
-                Text(artist)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+            Text(track.artist ?? "未知艺术家")
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Text(track.audioFile.format.description)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
+            if track.audioFile.format.isHiRes {
+                Text("HI-RES")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .padding(.horizontal, DesignTokens.Spacing.small)
+                    .padding(.vertical, 3)
+                    .background(Color.accentColor.opacity(0.2), in: RoundedRectangle(cornerRadius: 4))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.accentColor.opacity(0.45), lineWidth: 1)
+                    }
+                    .foregroundStyle(Color.accentColor)
             }
 
             Text("\(track.audioFile.formattedDuration) · \(track.audioFile.formattedSize)")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+                .monospacedDigit()
         }
     }
 }
@@ -211,29 +340,105 @@ struct CurrentTrackView: View {
 // MARK: - Empty State View
 struct EmptyStateView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var recentFolders: [FolderHistoryItem] {
+        appState.folderHistoryManager.items.filter {
+            appState.folderHistoryManager.itemExists(at: $0.url)
+        }
+    }
 
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "music.note.list")
-                .font(.system(size: 60))
-                .foregroundStyle(.tertiary)
+        ZStack {
+            RadialGradient(
+                colors: [Color.accentColor.opacity(0.08), Color.orange.opacity(0.06), Color.clear],
+                center: .center,
+                startRadius: 0,
+                endRadius: 450
+            )
 
-            Text("SoundBox")
-                .font(.title)
-                .fontWeight(.bold)
+            VStack(spacing: 24) {
+                Spacer()
 
-            Text("高保真音频播放器")
-                .foregroundStyle(.secondary)
+                VStack(spacing: 12) {
+                    Image(systemName: "folder.badge.plus")
+                        .font(.system(size: 34))
+                        .foregroundStyle(.tertiary)
 
-            Text("拖放音频文件到此处，或使用菜单打开文件夹")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                    Text("开始你的离线语音库")
+                        .font(.title3)
+                        .fontWeight(.semibold)
 
-            Button("选择文件夹") {
-                openFolder()
+                    Text("导入作品目录后，SoundBox 会自动识别音频并匹配同名 VTT 字幕文件。")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
+
+                    Button("导入作品文件夹") {
+                        openFolder()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding(.horizontal, 28)
+                .padding(.vertical, 24)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(
+                            Color.primary.opacity(colorScheme == .dark ? 0.24 : 0.14),
+                            style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                        )
+                }
+
+                if !recentFolders.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("最近打开")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+
+                        ForEach(Array(recentFolders.prefix(4))) { item in
+                            Button(action: { openRecent(item) }) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "folder")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(item.name)
+                                            .font(.subheadline)
+                                            .lineLimit(1)
+                                        Text(formatRecentDetail(item))
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.05),
+                                    in: RoundedRectangle(cornerRadius: 8)
+                                )
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(
+                                            Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08),
+                                            lineWidth: 1
+                                        )
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(maxWidth: 420)
+                }
+
+                Spacer()
             }
-            .buttonStyle(.borderedProminent)
+            .padding(30)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func openFolder() {
@@ -246,6 +451,18 @@ struct EmptyStateView: View {
         if panel.runModal() == .OK {
             appState.scanAndAddFolders(panel.urls)
         }
+    }
+
+    private func openRecent(_ item: FolderHistoryItem) {
+        guard appState.folderHistoryManager.itemExists(at: item.url) else { return }
+        appState.scanAndAddFolder(item.url)
+    }
+
+    private func formatRecentDetail(_ item: FolderHistoryItem) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M 月 d 日"
+        return "上次播放 \(formatter.string(from: item.lastOpenedAt))"
     }
 }
 
@@ -260,10 +477,10 @@ struct BookmarkListView: View {
     var body: some View {
         VStack(spacing: 0) {
             if bookmarks.isEmpty {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     Spacer()
                     Image(systemName: "bookmark")
-                        .font(.system(size: 40))
+                        .font(.system(size: 34))
                         .foregroundStyle(.tertiary)
                     Text("暂无书签")
                         .font(.body)
@@ -280,7 +497,7 @@ struct BookmarkListView: View {
                     ForEach(bookmarks) { bookmark in
                         HStack(spacing: 12) {
                             Image(systemName: "bookmark.fill")
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(DesignTokens.Colors.bookmark)
                                 .font(.caption)
 
                             VStack(alignment: .leading, spacing: 2) {

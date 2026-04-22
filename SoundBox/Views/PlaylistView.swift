@@ -11,7 +11,6 @@ struct PlaylistView: View {
 
         let currentIdx = appState.playlist.currentIndex
         return enumerated.filter { index, track in
-            // Always keep current playing track visible
             if index == currentIdx { return true }
             return track.title.localizedCaseInsensitiveContains(searchText)
         }
@@ -19,24 +18,21 @@ struct PlaylistView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // 标题栏
             HStack {
                 Text("播放列表")
-                    .font(.headline)
+                    .font(.title3)
+                    .fontWeight(.semibold)
                 Spacer()
                 Button(action: { addFolder() }) {
                     Image(systemName: "folder.badge.plus")
+                        .font(.body)
                 }
                 .buttonStyle(.plain)
                 .help("添加文件夹")
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.primary.opacity(0.05))
+            .padding(.vertical, 14)
 
-            Divider()
-
-            // 搜索栏
             if !appState.playlist.tracks.isEmpty {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
@@ -55,27 +51,16 @@ struct PlaylistView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(8)
-                .background(Color.primary.opacity(0.05))
-                .cornerRadius(6)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: DesignTokens.Radius.small))
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-
-                Divider()
+                .padding(.bottom, 8)
             }
 
-            // 播放列表
             if appState.playlist.tracks.isEmpty {
-                VStack(spacing: 12) {
-                    Spacer()
-                    Image(systemName: "list.bullet.rectangle")
-                        .font(.system(size: 32))
-                        .foregroundStyle(.tertiary)
-                    Text("空列表")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                }
+                playlistEmptyView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(selection: $appState.playlist.currentIndex) {
                     ForEach(filteredTracks, id: \.element.id) { index, track in
@@ -87,7 +72,6 @@ struct PlaylistView: View {
                             }
                     }
                     .onDelete { indexSet in
-                        // Map filtered indices back to original playlist indices
                         let originalIndices = indexSet.map { filteredTracks[$0].offset }
                         for index in originalIndices.sorted().reversed() {
                             appState.playlist.removeTrack(at: index)
@@ -103,7 +87,6 @@ struct PlaylistView: View {
 
             Divider()
 
-            // 底部信息
             HStack {
                 Text("\(appState.playlist.tracks.count) 首")
                     .font(.caption)
@@ -115,15 +98,45 @@ struct PlaylistView: View {
                 }
                 .buttonStyle(.plain)
                 .help("清空列表")
+                .disabled(appState.playlist.tracks.isEmpty)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.05))
+            .padding(.vertical, 10)
+            .background(Color.primary.opacity(0.04))
         }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)
             return true
         }
+    }
+
+    private var playlistEmptyView: some View {
+        VStack(spacing: 10) {
+            Spacer()
+            Image(systemName: "music.note.list")
+                .font(.system(size: 30))
+                .foregroundStyle(.tertiary)
+
+            Text("还没有音频")
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Text("添加本地文件夹后，作品会自动出现在这里。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+
+            Button("选择文件夹") {
+                addFolder()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .padding(.top, 2)
+
+            Spacer()
+        }
+        .padding(.bottom, 16)
     }
 
     private func addFolder() {
@@ -165,50 +178,83 @@ struct TrackRowView: View {
     let track: Track
     let index: Int
     let isPlaying: Bool
+    @State private var isHovering = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            // 序号/播放指示
-            ZStack {
+        HStack(spacing: 10) {
+            ZStack(alignment: .bottomTrailing) {
+                AsyncArtworkView(
+                    embeddedData: track.audioFile.embeddedArtworkData,
+                    artworkURL: track.audioFile.artworkURL,
+                    cornerRadius: DesignTokens.Radius.small
+                )
+                .frame(width: 36, height: 36)
+
                 if isPlaying {
-                    Image(systemName: "play.fill")
-                        .font(.caption)
-                        .foregroundStyle(Color.accentColor)
-                } else {
-                    Text("\(index + 1)")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .frame(width: 20)
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 14, height: 14)
+                        .overlay {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 7, weight: .bold))
+                                .foregroundStyle(.white)
+                                .offset(x: 0.5)
+                        }
+                        .offset(x: 3, y: 3)
                 }
             }
-            .frame(width: 24)
 
-            // 曲目信息
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
-                    .font(.body)
+                    .font(.subheadline)
                     .lineLimit(1)
                     .foregroundStyle(isPlaying ? Color.accentColor : .primary)
 
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     if track.audioFile.format.isHiRes {
-                        Text("Hi-Res")
+                        Text("HI-RES")
                             .font(.caption2)
+                            .fontWeight(.bold)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
-                            .background(Color.accentColor.opacity(0.2))
-                            .cornerRadius(2)
+                            .background(Color.accentColor.opacity(0.2), in: RoundedRectangle(cornerRadius: 4))
                     }
 
                     Text(track.audioFile.formattedDuration)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .monospacedDigit()
                 }
             }
 
             Spacer()
+
+            if !isPlaying {
+                Text("\(index + 1)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                .fill(
+                    isPlaying
+                    ? Color.accentColor.opacity(0.12)
+                    : (isHovering ? Color.primary.opacity(0.07) : Color.clear)
+                )
+        )
+        .overlay {
+            if isPlaying {
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                    .stroke(Color.accentColor.opacity(0.35), lineWidth: 1)
+            }
+        }
+        .onHover { hovering in
+            isHovering = hovering
+        }
         .contentShape(Rectangle())
     }
 }
