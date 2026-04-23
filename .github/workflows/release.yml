@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build archive
+        run: |
+          xcodebuild archive \
+            -project SoundBox.xcodeproj \
+            -scheme SoundBox \
+            -configuration Release \
+            -archivePath build/SoundBox.xcarchive \
+            MARKETING_VERSION=${{ steps.version.outputs.VERSION }} \
+            CURRENT_PROJECT_VERSION=1
+
+      - name: Export app
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/SoundBox.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Create DMG
+        run: |
+          mkdir -p build/dmg_temp
+          cp -R build/export/SoundBox.app build/dmg_temp/
+          ln -s /Applications build/dmg_temp/Applications
+          hdiutil create \
+            -volname "SoundBox" \
+            -srcfolder build/dmg_temp \
+            -ov \
+            -format UDZO \
+            "build/SoundBox-${{ steps.version.outputs.VERSION }}.dmg"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "build/SoundBox-${{ steps.version.outputs.VERSION }}.dmg" \
+            --title "SoundBox ${{ steps.version.outputs.VERSION }}" \
+            --generate-notes
