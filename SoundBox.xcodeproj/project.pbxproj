@@ -24,6 +24,7 @@
 		A1000015 /* BookmarkOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017; };
 		A1000016 /* ScriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000018; };
 		A1000017 /* FormatUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019; };
+		A1000018 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000012; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		A2000009 /* VTTParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTTParser.swift; sourceTree = "<group>"; };
 		A2000010 /* FileScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileScanner.swift; sourceTree = "<group>"; };
 		A2000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A2000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A2000013 /* SubtitlePreviewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitlePreviewPanel.swift; sourceTree = "<group>"; };
 		A2000014 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
 		A2000015 /* Bookmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookmark.swift; sourceTree = "<group>"; };
@@ -231,8 +233,9 @@
 		A6000003 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-			);
+				files = (
+					A1000018 /* Assets.xcassets in Resources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
