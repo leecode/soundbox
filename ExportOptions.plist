@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>copy</string>
+    <string>mac-application</string>
     <key>signingStyle</key>
     <string>automatic</string>
 </dict>
