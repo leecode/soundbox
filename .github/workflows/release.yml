@@ -26,6 +26,8 @@ jobs:
             -scheme SoundBox \
             -configuration Release \
             -archivePath build/SoundBox.xcarchive \
+            ARCHS="x86_64 arm64" \
+            ONLY_ACTIVE_ARCH=NO \
             MARKETING_VERSION=${{ steps.version.outputs.VERSION }} \
             CURRENT_PROJECT_VERSION=1
 
