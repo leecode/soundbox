@@ -29,6 +29,7 @@ private enum AppTheme: String, CaseIterable, Identifiable {
 @main
 struct SoundBoxApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var updateManager = UpdateManager()
     @AppStorage("app_theme") private var appThemeRawValue: String = AppTheme.system.rawValue
 
     private var selectedTheme: AppTheme {
@@ -39,6 +40,7 @@ struct SoundBoxApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .environmentObject(updateManager)
                 .preferredColorScheme(selectedTheme.colorScheme)
                 .frame(minWidth: 900, minHeight: 680)
         }
@@ -69,6 +71,17 @@ struct SoundBoxApp: App {
                         }
                     }
                 }
+
+                Divider()
+
+                Button(updateManager.isChecking ? "正在检查..." : "检查更新...") {
+                    Task {
+                        await updateManager.checkForUpdates(force: true)
+                    }
+                }
+                .disabled(updateManager.isChecking)
+
+                Toggle("自动检查更新", isOn: $updateManager.autoCheckUpdates)
             }
 
             // 播放控制菜单
