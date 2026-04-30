@@ -27,7 +27,7 @@ struct UpdateBannerView: View {
                     showDownload: false
                 ) {} dismissAction: {
                     withAnimation(.easeInOut) {
-                        updateManager.isUpToDate = false
+                        updateManager.dismissUpToDate()
                     }
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
@@ -72,7 +72,7 @@ struct UpdateBannerView: View {
                 Image(systemName: "xmark")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

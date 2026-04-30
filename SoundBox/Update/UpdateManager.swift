@@ -25,12 +25,6 @@ struct GitHubRelease: Codable {
 
 struct GitHubAsset: Codable {
     let name: String
-    let browserDownloadUrl: String
-
-    enum CodingKeys: String, CodingKey {
-        case name
-        case browserDownloadUrl = "browser_download_url"
-    }
 }
 
 // MARK: - Version Comparison
@@ -77,6 +71,7 @@ class UpdateManager: ObservableObject {
     private let owner = "leecode"
     private let repo = "soundbox"
     private let cooldownInterval: TimeInterval = 24 * 60 * 60 // 24 hours
+    private var autoDismissTask: Task<Void, Never>?
 
     var lastUpdateCheck: Double {
         get { UserDefaults.standard.double(forKey: "lastUpdateCheck") }
@@ -100,6 +95,8 @@ class UpdateManager: ObservableObject {
         }
 
         isChecking = true
+        autoDismissTask?.cancel()
+        autoDismissTask = nil
 
         do {
             guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest") else {
@@ -128,6 +125,9 @@ class UpdateManager: ObservableObject {
                 return
             }
 
+            lastUpdateCheck = Date().timeIntervalSince1970
+            isChecking = false
+
             let currentVersion = Bundle.main.appVersion
             let remoteVersion = release.tagName
             let hasNewer = isNewerVersion(remoteVersion, than: currentVersion)
@@ -138,19 +138,21 @@ class UpdateManager: ObservableObject {
                     isUpToDate = false
                 }
             } else if force {
-                // Manual check, already on latest
                 isUpToDate = true
-                // Auto-dismiss after 3 seconds
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                isUpToDate = false
+                scheduleAutoDismiss()
             }
-
-            lastUpdateCheck = Date().timeIntervalSince1970
         } catch {
-            // Network error, rate limit, etc. — silent skip
+            isChecking = false
         }
+    }
 
-        isChecking = false
+    private func scheduleAutoDismiss() {
+        autoDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard let self, !Task.isCancelled else { return }
+            self.isUpToDate = false
+            self.autoDismissTask = nil
+        }
     }
 
     func dismiss() {
@@ -158,6 +160,12 @@ class UpdateManager: ObservableObject {
             dismissedVersion = release.tagName
         }
         updateAvailable = nil
+    }
+
+    func dismissUpToDate() {
+        autoDismissTask?.cancel()
+        autoDismissTask = nil
+        isUpToDate = false
     }
 
     func openReleasePage() {
