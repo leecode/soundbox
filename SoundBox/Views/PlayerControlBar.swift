@@ -197,6 +197,40 @@ struct PlayerControlBar: View {
             .opacity(appState.subtitlePreviewManager.items.isEmpty ? 0.35 : 1.0)
             .disabled(appState.subtitlePreviewManager.items.isEmpty)
 
+            if let abRepeatRange = appState.abRepeatRange {
+                Button(action: appState.clearABRepeat) {
+                    HStack(spacing: 4) {
+                        Image(systemName: abRepeatRange.source == .subtitle ? "text.bubble.fill" : "repeat")
+                            .font(.caption2)
+                        Text(formatABRepeatRange(abRepeatRange))
+                            .font(.caption2)
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .help("取消 A-B 循环")
+            } else if let pendingStart = appState.pendingABRepeatStart {
+                Button(action: appState.clearABRepeat) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "a.circle")
+                            .font(.caption2)
+                        Text(FormatUtils.formatTime(pendingStart))
+                            .font(.caption2)
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .help("已设置循环起点，点击取消")
+            }
+
             if let remaining = sleepTimerState.remaining {
                 Button(action: {
                     appState.cancelSleepTimer()
@@ -254,6 +288,11 @@ struct PlayerControlBar: View {
             return String(format: "%.0fx", speed)
         }
         return String(format: "%.2fx", speed)
+    }
+
+    private func formatABRepeatRange(_ range: ABRepeatRange) -> String {
+        let prefix = range.source == .subtitle ? "句" : "A-B"
+        return "\(prefix) \(FormatUtils.formatTime(range.startTime))-\(FormatUtils.formatTime(range.endTime))"
     }
 
     private var repeatModeIcon: String {
