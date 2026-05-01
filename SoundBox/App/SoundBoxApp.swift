@@ -30,6 +30,7 @@ private enum AppTheme: String, CaseIterable, Identifiable {
 struct SoundBoxApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var updateManager = UpdateManager()
+    @StateObject private var floatingPanelManager = FloatingPanelManager()
     @AppStorage("app_theme") private var appThemeRawValue: String = AppTheme.system.rawValue
 
     private var selectedTheme: AppTheme {
@@ -41,8 +42,12 @@ struct SoundBoxApp: App {
             ContentView()
                 .environmentObject(appState)
                 .environmentObject(updateManager)
+                .environmentObject(floatingPanelManager)
                 .preferredColorScheme(selectedTheme.colorScheme)
                 .frame(minWidth: 900, minHeight: 680)
+                .onAppear {
+                    floatingPanelManager.configure(appState: appState)
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
@@ -122,6 +127,32 @@ struct SoundBoxApp: App {
 
                 Divider()
 
+                Menu("播放速度") {
+                    ForEach(AppState.playbackSpeedOptions, id: \.self) { speed in
+                        Button(speedLabel(speed)) {
+                            appState.setPlaybackSpeed(speed)
+                        }
+                    }
+                }
+
+                Menu("睡眠定时器") {
+                    ForEach(AppState.sleepTimerDurations, id: \.self) { minutes in
+                        Button("\(minutes) 分钟") {
+                            appState.startSleepTimer(minutes: minutes)
+                        }
+                    }
+
+                    if appState.sleepTimerState.remaining != nil {
+                        Divider()
+
+                        Button("取消定时器") {
+                            appState.cancelSleepTimer()
+                        }
+                    }
+                }
+
+                Divider()
+
                 Button("字幕预览") {
                     withAnimation {
                         appState.showSubtitlePanel.toggle()
@@ -141,8 +172,19 @@ struct SoundBoxApp: App {
                         Text(theme.title).tag(theme.rawValue)
                     }
                 }
+
+                Divider()
+
+                Button(floatingPanelManager.isEnabled ? "关闭浮动字幕" : "浮动字幕") {
+                    floatingPanelManager.toggle()
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
             }
         }
+    }
+
+    private func speedLabel(_ speed: Float) -> String {
+        String(format: speed.truncatingRemainder(dividingBy: 1) == 0 ? "%.0fx" : "%.2fx", speed)
     }
 
     private func toggleRepeatMode() {
@@ -159,14 +201,14 @@ struct SoundBoxApp: App {
     private func seekBackward() {
         let currentTime = appState.playbackProgress.currentTime
         let newTime = max(0, currentTime - 5)
-        AudioEngine.shared.seek(to: newTime)
+        appState.seekTo(newTime)
     }
 
     private func seekForward() {
         let currentTime = appState.playbackProgress.currentTime
         let duration = appState.playbackProgress.totalDuration
         let newTime = min(duration, currentTime + 5)
-        AudioEngine.shared.seek(to: newTime)
+        appState.seekTo(newTime)
     }
 
     // MARK: - Folder Operations
@@ -205,8 +247,15 @@ class PlaybackProgress: ObservableObject {
     }
 }
 
+final class SleepTimerState: ObservableObject {
+    @Published var remaining: TimeInterval?
+}
+
 // MARK: - App State
 class AppState: ObservableObject {
+    static let playbackSpeedOptions: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+    static let sleepTimerDurations = [5, 10, 15, 30, 45, 60, 90, 120]
+
     @Published var playerState = PlayerState()
     @Published var showSubtitlePanel: Bool = false
     @Published var showBookmarkOverlay: Bool = false
@@ -219,7 +268,12 @@ class AppState: ObservableObject {
     var folderHistoryManager = FolderHistoryManager()
     var playbackPositionManager = PlaybackPositionManager()
     var bookmarkManager = BookmarkManager()
+    var sleepTimerState = SleepTimerState()
     private var lastPositionSaveTime: TimeInterval = 0
+    private var sleepTimer: Timer?
+    private var fadeTimer: Timer?
+    private var savedVolumeBeforeFade: Float = 1.0
+    private var isSleepFading = false
 
     private let fileScanner = FileScanner()
 
@@ -273,12 +327,24 @@ class AppState: ObservableObject {
         } else if playerState.playbackState == .paused {
             AudioEngine.shared.resume()
         } else if let track = playlist.currentTrack {
+            restorePlaybackSpeedForCurrentTrack()
+            AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
+    func playTrack(at index: Int) {
+        guard playlist.tracks.indices.contains(index) else { return }
+        cancelSleepFade(restoreVolume: true)
+        playlist.selectTrack(at: index)
+        restorePlaybackSpeedForCurrentTrack()
+        if let track = playlist.currentTrack {
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
         }
     }
 
     func goToNextTrack() {
         guard !playlist.tracks.isEmpty else { return }
+        cancelSleepFade(restoreVolume: true)
         let newIndex: Int
         if playlist.currentIndex < playlist.tracks.count - 1 {
             newIndex = playlist.currentIndex + 1
@@ -288,6 +354,7 @@ class AppState: ObservableObject {
             return
         }
         playlist.selectTrack(at: newIndex)
+        restorePlaybackSpeedForCurrentTrack()
         if let track = playlist.currentTrack {
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
         }
@@ -295,6 +362,7 @@ class AppState: ObservableObject {
 
     func goToPreviousTrack() {
         guard !playlist.tracks.isEmpty else { return }
+        cancelSleepFade(restoreVolume: true)
         let newIndex: Int
         if playlist.currentIndex > 0 {
             newIndex = playlist.currentIndex - 1
@@ -304,13 +372,68 @@ class AppState: ObservableObject {
             return
         }
         playlist.selectTrack(at: newIndex)
+        restorePlaybackSpeedForCurrentTrack()
         if let track = playlist.currentTrack {
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
         }
     }
 
     func seekTo(_ time: TimeInterval) {
+        cancelSleepFade(restoreVolume: true)
         AudioEngine.shared.seek(to: time)
+    }
+
+    func setPlaybackSpeed(_ speed: Float) {
+        let clampedSpeed = min(max(speed, 0.5), 2.0)
+        playerState.playbackRate = clampedSpeed
+        AudioEngine.shared.setRate(clampedSpeed)
+
+        if let track = playlist.currentTrack {
+            UserDefaults.standard.set(clampedSpeed, forKey: playbackSpeedKey(for: track.audioFile.url))
+        }
+    }
+
+    func cyclePlaybackSpeed() {
+        let current = playerState.playbackRate
+        let options = Self.playbackSpeedOptions
+        let nextIndex = options.firstIndex(where: { $0 > current + 0.01 }) ?? 0
+        setPlaybackSpeed(options[nextIndex])
+    }
+
+    func startSleepTimer(minutes: Int) {
+        startSleepTimer(duration: TimeInterval(minutes * 60))
+    }
+
+    func startSleepTimer(duration: TimeInterval) {
+        sleepTimer?.invalidate()
+        cancelSleepFade(restoreVolume: true)
+        sleepTimerState.remaining = duration
+        sleepTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self, let remaining = self.sleepTimerState.remaining else {
+                timer.invalidate()
+                return
+            }
+
+            let nextRemaining = max(remaining - 1, 0)
+            self.sleepTimerState.remaining = nextRemaining
+
+            if nextRemaining <= 3, nextRemaining > 0, !self.isSleepFading {
+                self.startSmoothFade(duration: nextRemaining)
+            }
+
+            if nextRemaining <= 0 {
+                self.cancelSleepTimer(restoreVolume: false)
+                AudioEngine.shared.pause()
+                AudioEngine.shared.setVolume(self.playerState.volume)
+            }
+        }
+    }
+
+    func cancelSleepTimer(restoreVolume: Bool = true) {
+        sleepTimer?.invalidate()
+        sleepTimer = nil
+        sleepTimerState.remaining = nil
+        cancelSleepFade(restoreVolume: restoreVolume)
     }
 
     init() {
@@ -346,6 +469,7 @@ class AppState: ObservableObject {
         // 监听 playlist 变化自动预加载字幕
         playlist.$tracks.sink { [weak self] tracks in
             self?.subtitlePreviewManager.preloadSubtitles(for: tracks)
+            self?.prunePlaybackSpeedDefaults(for: tracks)
         }.store(in: &cancellables)
     }
 
@@ -357,6 +481,67 @@ class AppState: ObservableObject {
             info[MPMediaItemPropertyTitle] = track.title
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info.isEmpty ? nil : info
+    }
+
+    private func playbackSpeedKey(for url: URL) -> String {
+        "playbackSpeed_\(url.absoluteString)"
+    }
+
+    private func restorePlaybackSpeedForCurrentTrack() {
+        guard let track = playlist.currentTrack else {
+            setPlaybackSpeed(1.0)
+            return
+        }
+
+        let savedSpeed = UserDefaults.standard.object(forKey: playbackSpeedKey(for: track.audioFile.url)) as? NSNumber
+        setPlaybackSpeed(savedSpeed?.floatValue ?? 1.0)
+    }
+
+    private func prunePlaybackSpeedDefaults(for tracks: [Track]) {
+        let defaults = UserDefaults.standard
+        let validKeys = Set(tracks.map { playbackSpeedKey(for: $0.audioFile.url) })
+        let speedKeys = defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix("playbackSpeed_") }
+        let extraKeys = speedKeys.filter { !validKeys.contains($0) }
+
+        for key in extraKeys.prefix(max(speedKeys.count - 100, 0)) {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
+    private func startSmoothFade(duration: TimeInterval) {
+        cancelSleepFade(restoreVolume: false)
+        isSleepFading = true
+        savedVolumeBeforeFade = playerState.volume
+
+        let totalSteps = 60
+        let stepInterval = max(duration / Double(totalSteps), 0.02)
+        var step = 0
+
+        fadeTimer = Timer.scheduledTimer(withTimeInterval: stepInterval, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+
+            step += 1
+            let progress = min(Float(step) / Float(totalSteps), 1.0)
+            AudioEngine.shared.setVolume(self.savedVolumeBeforeFade * (1.0 - progress))
+
+            if step >= totalSteps {
+                timer.invalidate()
+            }
+        }
+    }
+
+    private func cancelSleepFade(restoreVolume: Bool) {
+        fadeTimer?.invalidate()
+        fadeTimer = nil
+
+        if isSleepFading && restoreVolume {
+            AudioEngine.shared.setVolume(playerState.volume)
+        }
+
+        isSleepFading = false
     }
 
     // MARK: - Folder Scanning
@@ -382,6 +567,7 @@ class AppState: ObservableObject {
     func playFromSubtitle(_ item: SubtitlePreviewItem) {
         // 1. 切换到对应 track
         playlist.selectTrack(at: item.trackIndex)
+        restorePlaybackSpeedForCurrentTrack()
 
         // 2. 加载并播放
         if let track = playlist.currentTrack {
@@ -389,7 +575,7 @@ class AppState: ObservableObject {
 
             // 3. 跳转到字幕时间点
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                AudioEngine.shared.seek(to: item.cue.startTime)
+                self.seekTo(item.cue.startTime)
             }
         }
     }
@@ -469,7 +655,7 @@ extension AppState: AudioEngineDelegate {
                 // App 启动后恢复上次的播放位置（仅一次）
                 if let savedPosition = self.playbackPositionManager.restorePositionIfNeeded(for: track.audioFile.url) {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        AudioEngine.shared.seek(to: savedPosition)
+                        self.seekTo(savedPosition)
                     }
                 }
 

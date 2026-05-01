@@ -166,10 +166,7 @@ struct PlaylistView: View {
     }
 
     private func playTrack(at index: Int) {
-        appState.playlist.selectTrack(at: index)
-        if let track = appState.playlist.currentTrack {
-            AudioEngine.shared.loadAndPlay(track.audioFile.url)
-        }
+        appState.playTrack(at: index)
     }
 }
 

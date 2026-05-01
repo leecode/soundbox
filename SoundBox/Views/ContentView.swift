@@ -66,6 +66,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 PlayerControlBar(playerState: appState.playerState)
+                    .environmentObject(appState.sleepTimerState)
                     .frame(height: DesignTokens.Layout.controlBarHeight)
                     .background(.bar)
             }

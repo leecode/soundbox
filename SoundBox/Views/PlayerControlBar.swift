@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayerControlBar: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var sleepTimerState: SleepTimerState
     @ObservedObject var playerState: PlayerState
     @State private var isDraggingSlider = false
     @State private var sliderValue: Double = 0
@@ -94,7 +95,7 @@ struct PlayerControlBar: View {
                 onEditingChanged: { editing in
                     isDraggingSlider = editing
                     if !editing {
-                        AudioEngine.shared.seek(to: sliderValue)
+                        appState.seekTo(sliderValue)
                     }
                 }
             )
@@ -196,6 +197,26 @@ struct PlayerControlBar: View {
             .opacity(appState.subtitlePreviewManager.items.isEmpty ? 0.35 : 1.0)
             .disabled(appState.subtitlePreviewManager.items.isEmpty)
 
+            if let remaining = sleepTimerState.remaining {
+                Button(action: {
+                    appState.cancelSleepTimer()
+                }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "timer")
+                            .font(.caption2)
+                        Text(formatTimer(remaining))
+                            .font(.caption2)
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(Color.accentColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .help("取消睡眠定时器")
+            }
+
             Image(systemName: volumeIcon)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -208,12 +229,31 @@ struct PlayerControlBar: View {
                 }
 
             if showSpeed {
-                Text(String(format: "%.1fx", playerState.playbackRate))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 34)
+                Button(action: appState.cyclePlaybackSpeed) {
+                    Text(formatSpeed(playerState.playbackRate))
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(abs(playerState.playbackRate - 1.0) < 0.01 ? Color.secondary : Color.accentColor)
+                        .frame(width: 40)
+                }
+                .buttonStyle(.plain)
+                .help("播放速度")
             }
         }
+    }
+
+    private func formatTimer(_ remaining: TimeInterval) -> String {
+        let totalSeconds = max(Int(remaining.rounded(.up)), 0)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    private func formatSpeed(_ speed: Float) -> String {
+        if abs(speed.rounded() - speed) < 0.01 {
+            return String(format: "%.0fx", speed)
+        }
+        return String(format: "%.2fx", speed)
     }
 
     private var repeatModeIcon: String {

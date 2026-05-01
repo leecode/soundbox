@@ -27,6 +27,8 @@
 		A1000018 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000012; };
 		A1000019 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020; };
 		A1000020 /* UpdateBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021; };
+		A1000021 /* FloatingSubtitlePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022; };
+		A1000022 /* FloatingSubtitleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000023; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +54,8 @@
 		A3000001 /* SoundBox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SoundBox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2000020 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		A2000021 /* UpdateBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateBannerView.swift; sourceTree = "<group>"; };
+		A2000022 /* FloatingSubtitlePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingSubtitlePanel.swift; sourceTree = "<group>"; };
+		A2000023 /* FloatingSubtitleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingSubtitleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +89,7 @@
 				A5000010 /* Utils */,
 				A5000012 /* Managers */,
 				A5000013 /* Update */,
+				A5000014 /* Floating */,
 				A5000011 /* Resources */,
 			);
 			path = SoundBox;
@@ -189,6 +194,15 @@
 			path = Update;
 			sourceTree = "<group>";
 		};
+		A5000014 /* Floating */ = {
+			isa = PBXGroup;
+			children = (
+				A2000022 /* FloatingSubtitlePanel.swift */,
+				A2000023 /* FloatingSubtitleView.swift */,
+			);
+			path = Floating;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -278,6 +292,8 @@
 				A1000017 /* FormatUtils.swift in Sources */,
 				A1000019 /* UpdateManager.swift in Sources */,
 				A1000020 /* UpdateBannerView.swift in Sources */,
+				A1000021 /* FloatingSubtitlePanel.swift in Sources */,
+				A1000022 /* FloatingSubtitleView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -19,6 +19,7 @@ class AudioEngine {
     // MARK: - Private Properties
     private let audioEngine = AVAudioEngine()
     private let playerNode = AVAudioPlayerNode()
+    private let timePitchNode = AVAudioUnitTimePitch()
 
     private var audioFile: AVAudioFile?
     private var totalDuration: TimeInterval = 0
@@ -32,6 +33,7 @@ class AudioEngine {
     // MARK: - Initialization
     private init() {
         audioEngine.attach(playerNode)
+        audioEngine.attach(timePitchNode)
     }
 
     // MARK: - Public Methods
@@ -53,8 +55,11 @@ class AudioEngine {
             let frameCount = audioFile.length
             totalDuration = Double(frameCount) / format.sampleRate
 
+            audioEngine.disconnectNodeOutput(playerNode)
+            audioEngine.disconnectNodeOutput(timePitchNode)
             audioEngine.disconnectNodeInput(audioEngine.mainMixerNode, bus: 0)
-            audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: format)
+            audioEngine.connect(playerNode, to: timePitchNode, format: format)
+            audioEngine.connect(timePitchNode, to: audioEngine.mainMixerNode, format: format)
 
             if !audioEngine.isRunning {
                 try audioEngine.start()
@@ -168,6 +173,10 @@ class AudioEngine {
 
     func setVolume(_ volume: Float) {
         playerNode.volume = volume
+    }
+
+    func setRate(_ rate: Float) {
+        timePitchNode.rate = min(max(rate, 0.5), 2.0)
     }
 
     // MARK: - Progress Timer
