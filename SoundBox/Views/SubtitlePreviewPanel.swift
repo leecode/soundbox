@@ -10,6 +10,8 @@ struct SubtitlePreviewPanel: View {
 
     @State private var searchText: String = ""
     @State private var expandedTrackIndices: Set<Int> = []
+    @State private var isFollowingPlayback = true
+    @State private var followScrollRequest = 0
 
     var filteredItems: [SubtitlePreviewItem] {
         if searchText.isEmpty {
@@ -58,6 +60,17 @@ struct SubtitlePreviewPanel: View {
                     .fontWeight(.semibold)
 
                 Spacer()
+
+                Button(action: toggleFollowPlayback) {
+                    Image(systemName: isFollowingPlayback ? "location.fill" : "location")
+                        .font(.caption)
+                        .foregroundStyle(isFollowingPlayback ? Color.accentColor : .secondary)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(subtitlePreviewManager.items.isEmpty)
+                .help(isFollowingPlayback ? "关闭跟随播放" : "跟随播放")
 
                 if !subtitlePreviewManager.items.isEmpty {
                     Text("\(subtitlePreviewManager.items.count)")
@@ -159,11 +172,16 @@ struct SubtitlePreviewPanel: View {
                         prepareActiveSubtitle(proxy: proxy)
                     }
                     .onChange(of: subtitlePreviewManager.activeItemId) { _, _ in
-                        expandActiveSection()
-                        scrollToActiveItem(proxy: proxy)
+                        followActiveSubtitle(proxy: proxy)
                     }
                     .onChange(of: currentTrackIndex) { _, _ in
                         prepareActiveSubtitle(proxy: proxy)
+                    }
+                    .onChange(of: currentTime) { _, _ in
+                        refreshActiveSubtitleIfNeeded()
+                    }
+                    .onChange(of: followScrollRequest) { _, _ in
+                        scrollToActiveItem(proxy: proxy)
                     }
                     .onChange(of: searchText) { _, _ in
                         expandSectionsForSearch()
@@ -184,6 +202,7 @@ struct SubtitlePreviewPanel: View {
         Binding(
             get: { expandedTrackIndices.contains(trackIndex) },
             set: { isExpanded in
+                isFollowingPlayback = false
                 if isExpanded {
                     expandedTrackIndices.insert(trackIndex)
                 } else {
@@ -193,11 +212,28 @@ struct SubtitlePreviewPanel: View {
         )
     }
 
+    private func toggleFollowPlayback() {
+        isFollowingPlayback.toggle()
+        if isFollowingPlayback {
+            subtitlePreviewManager.refreshActiveItem(for: currentTime, currentTrackIndex: currentTrackIndex)
+            expandActiveSection()
+            followScrollRequest += 1
+        }
+    }
+
     private func prepareActiveSubtitle(proxy: ScrollViewProxy) {
         subtitlePreviewManager.refreshActiveItem(for: currentTime, currentTrackIndex: currentTrackIndex)
-        if expandedTrackIndices.isEmpty {
-            expandedTrackIndices.insert(currentTrackIndex)
-        }
+        expandActiveSection()
+        scrollToActiveItem(proxy: proxy)
+    }
+
+    private func refreshActiveSubtitleIfNeeded() {
+        guard isFollowingPlayback else { return }
+        subtitlePreviewManager.updateActiveItem(for: currentTime, currentTrackIndex: currentTrackIndex)
+    }
+
+    private func followActiveSubtitle(proxy: ScrollViewProxy) {
+        guard isFollowingPlayback else { return }
         expandActiveSection()
         scrollToActiveItem(proxy: proxy)
     }
