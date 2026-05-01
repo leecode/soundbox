@@ -4,10 +4,12 @@ struct SubtitlePreviewPanel: View {
     @ObservedObject var subtitleManager: SubtitleManager
     @ObservedObject var subtitlePreviewManager: SubtitlePreviewManager
     let currentTrackIndex: Int
+    let currentTime: TimeInterval
     let onClose: () -> Void
     let onSelectSubtitle: (SubtitlePreviewItem) -> Void
 
     @State private var searchText: String = ""
+    @State private var expandedTrackIndices: Set<Int> = []
 
     var filteredItems: [SubtitlePreviewItem] {
         if searchText.isEmpty {
@@ -17,6 +19,35 @@ struct SubtitlePreviewPanel: View {
             item.cue.text.localizedCaseInsensitiveContains(searchText) ||
             item.trackTitle.localizedCaseInsensitiveContains(searchText)
         }
+    }
+
+    private var filteredSections: [SubtitlePreviewTrackSection] {
+        var sections: [SubtitlePreviewTrackSection] = []
+        var sectionIndexByTrack: [Int: Int] = [:]
+
+        for item in filteredItems {
+            if let sectionIndex = sectionIndexByTrack[item.trackIndex] {
+                sections[sectionIndex].items.append(item)
+            } else {
+                sectionIndexByTrack[item.trackIndex] = sections.count
+                sections.append(SubtitlePreviewTrackSection(
+                    trackIndex: item.trackIndex,
+                    trackTitle: item.trackTitle,
+                    items: [item]
+                ))
+            }
+        }
+
+        return sections
+    }
+
+    private var filteredItemIds: Set<String> {
+        Set(filteredItems.map(\.id))
+    }
+
+    private var activeItem: SubtitlePreviewItem? {
+        guard let activeItemId = subtitlePreviewManager.activeItemId else { return nil }
+        return subtitlePreviewManager.items.first { $0.id == activeItemId }
     }
 
     var body: some View {
@@ -101,17 +132,42 @@ struct SubtitlePreviewPanel: View {
             } else {
                 ScrollViewReader { proxy in
                     List {
-                        ForEach(filteredItems) { item in
-                            SubtitleItemRow(item: item, isActive: isItemActive(item))
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    onSelectSubtitle(item)
+                        ForEach(filteredSections) { section in
+                            DisclosureGroup(
+                                isExpanded: bindingForSection(section.trackIndex)
+                            ) {
+                                ForEach(section.items) { item in
+                                    SubtitleItemRow(item: item, isActive: isItemActive(item))
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            onSelectSubtitle(item)
+                                        }
+                                        .id(item.id)
                                 }
-                                .id(item.id)
+                            } label: {
+                                SubtitleTrackSectionHeader(
+                                    title: section.trackTitle,
+                                    count: section.items.count,
+                                    isCurrent: section.trackIndex == currentTrackIndex
+                                )
+                            }
+                            .id(section.id)
                         }
                     }
                     .listStyle(.plain)
-                    .onChange(of: subtitlePreviewManager.activeItemId) { oldValue, newValue in
+                    .onAppear {
+                        prepareActiveSubtitle(proxy: proxy)
+                    }
+                    .onChange(of: subtitlePreviewManager.activeItemId) { _, _ in
+                        expandActiveSection()
+                        scrollToActiveItem(proxy: proxy)
+                    }
+                    .onChange(of: currentTrackIndex) { _, _ in
+                        prepareActiveSubtitle(proxy: proxy)
+                    }
+                    .onChange(of: searchText) { _, _ in
+                        expandSectionsForSearch()
+                        expandActiveSection()
                         scrollToActiveItem(proxy: proxy)
                     }
                 }
@@ -124,12 +180,93 @@ struct SubtitlePreviewPanel: View {
         return subtitlePreviewManager.activeItemId == item.id
     }
 
+    private func bindingForSection(_ trackIndex: Int) -> Binding<Bool> {
+        Binding(
+            get: { expandedTrackIndices.contains(trackIndex) },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedTrackIndices.insert(trackIndex)
+                } else {
+                    expandedTrackIndices.remove(trackIndex)
+                }
+            }
+        )
+    }
+
+    private func prepareActiveSubtitle(proxy: ScrollViewProxy) {
+        subtitlePreviewManager.refreshActiveItem(for: currentTime, currentTrackIndex: currentTrackIndex)
+        if expandedTrackIndices.isEmpty {
+            expandedTrackIndices.insert(currentTrackIndex)
+        }
+        expandActiveSection()
+        scrollToActiveItem(proxy: proxy)
+    }
+
+    private func expandActiveSection() {
+        guard let activeItem else {
+            expandedTrackIndices.insert(currentTrackIndex)
+            return
+        }
+        expandedTrackIndices.insert(activeItem.trackIndex)
+    }
+
+    private func expandSectionsForSearch() {
+        guard !searchText.isEmpty else { return }
+        expandedTrackIndices.formUnion(filteredSections.map(\.trackIndex))
+    }
+
     private func scrollToActiveItem(proxy: ScrollViewProxy) {
-        if let itemId = subtitlePreviewManager.activeItemId {
-            withAnimation {
+        guard let itemId = subtitlePreviewManager.activeItemId,
+              filteredItemIds.contains(itemId) else {
+            return
+        }
+
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.2)) {
                 proxy.scrollTo(itemId, anchor: .center)
             }
         }
+    }
+}
+
+private struct SubtitlePreviewTrackSection: Identifiable {
+    let trackIndex: Int
+    let trackTitle: String
+    var items: [SubtitlePreviewItem]
+
+    var id: String {
+        "track-\(trackIndex)"
+    }
+}
+
+private struct SubtitleTrackSectionHeader: View {
+    let title: String
+    let count: Int
+    let isCurrent: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isCurrent ? "play.circle.fill" : "music.note")
+                .font(.caption2)
+                .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+
+            Text(title)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+                .lineLimit(1)
+
+            Spacer()
+
+            Text("\(count)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+        }
+        .textCase(nil)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(.regularMaterial)
     }
 }
 
@@ -186,6 +323,7 @@ struct SubtitleItemRow: View {
         subtitleManager: appState.subtitleManager,
         subtitlePreviewManager: appState.subtitlePreviewManager,
         currentTrackIndex: 0,
+        currentTime: 0,
         onClose: {},
         onSelectSubtitle: { _ in }
     )
