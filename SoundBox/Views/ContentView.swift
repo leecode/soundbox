@@ -38,6 +38,7 @@ enum DesignTokens {
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var updateManager: UpdateManager
 
     var body: some View {
         ZStack {
@@ -45,6 +46,8 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
+                UpdateBannerView()
+
                 HStack(spacing: 0) {
                     PlaylistView()
                         .frame(width: DesignTokens.Layout.sidebarWidth)
@@ -63,6 +66,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 PlayerControlBar(playerState: appState.playerState)
+                    .environmentObject(appState.sleepTimerState)
                     .frame(height: DesignTokens.Layout.controlBarHeight)
                     .background(.bar)
             }
@@ -109,6 +113,11 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut, value: appState.showSubtitlePanel)
+        .task {
+            if updateManager.autoCheckUpdates {
+                await updateManager.checkForUpdates()
+            }
+        }
     }
 }
 

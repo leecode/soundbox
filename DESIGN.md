@@ -123,6 +123,22 @@ All empty states follow this pattern:
 - Auto-dismiss after 3 seconds
 - Positioned above control bar
 
+### Update Banner
+- Horizontal pill at top of center column (pushes content down)
+- Two variants: **update** (blue accent icon, "新版本 vX.Y.Z 可用" + "下载") and **success** (green system icon, "已是最新版本")
+- Background: `.regularMaterial`, border: 0.5px system separator
+- Padding: 8px vertical, 12px horizontal, border radius: 8px
+- Icon: SF Symbol (update: `arrow.triangle.2.circlepath`, success: `checkmark.circle`), 16-20pt
+- Text: `.subheadline`, primary color
+- "下载" button: accent color text-only, opens release page
+- "×" dismiss: `.tertiary` color, 44pt touch target
+- Animation: slide down from top + fade in (entry), slide up + fade out (dismiss), `.easeInOut`
+- Success variant auto-dismisses after 3 seconds
+- Non-intrusive: does not overlap sidebar, control bar, or modal overlays
+- ZStack order: above main content, below bookmark overlay and error toast
+- A11y: VoiceOver announcement as alert, keyboard Tab/Escape support
+- Narrow window: version text truncates (`.lineLimit(1)`, `.truncationMode(.tail)`)
+
 ## Decisions Log
 | Date | Decision | Rationale |
 |------|----------|-----------|
@@ -131,3 +147,4 @@ All empty states follow this pattern:
 | 2026-04-18 | Timeline as visual hero | Voice work users navigate by timestamp and bookmark more than general music listeners. Progress slider deserves more visual weight. |
 | 2026-04-18 | System fonts only | macOS native app. Non-system fonts feel foreign on macOS. San Francisco is excellent. |
 | 2026-04-18 | Bookmark orange (#FF9500) | Distinct from blue accent. High visibility on both light and dark progress bar. Matches macOS system orange. |
+| 2026-04-26 | Update Banner component | In-app update notification using GitHub Releases API. Non-intrusive pill banner reuses error toast visual language. Green/blue color variants for success/update states. |
