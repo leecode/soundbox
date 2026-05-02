@@ -2,7 +2,7 @@
 
 All notable changes to SoundBox will be documented in this file.
 
-## [0.1.0-beta] - Unreleased
+## [0.1.0-beta] - 2026-05-02
 
 ### Added
 
