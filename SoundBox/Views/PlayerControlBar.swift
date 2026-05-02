@@ -6,6 +6,7 @@ struct PlayerControlBar: View {
     @ObservedObject var playerState: PlayerState
     @State private var isDraggingSlider = false
     @State private var sliderValue: Double = 0
+    @State private var showCompanionPopover = false
 
     private var currentBookmarks: [Bookmark] {
         appState.currentFileBookmarks()
@@ -196,6 +197,21 @@ struct PlayerControlBar: View {
             .help("字幕预览 (⌘S)")
             .opacity(appState.subtitlePreviewManager.items.isEmpty ? 0.35 : 1.0)
             .disabled(appState.subtitlePreviewManager.items.isEmpty)
+
+            Button(action: {
+                showCompanionPopover.toggle()
+            }) {
+                Image(systemName: "iphone")
+                    .font(.caption)
+                    .foregroundStyle(appState.companionServer.isRunning ? Color.accentColor : .secondary)
+            }
+            .buttonStyle(.plain)
+            .frame(width: 24, height: 24)
+            .help("手机伴侣")
+            .popover(isPresented: $showCompanionPopover, arrowEdge: .top) {
+                CompanionControlView(server: appState.companionServer)
+                    .environmentObject(appState)
+            }
 
             if let abRepeatRange = appState.abRepeatRange {
                 Button(action: appState.clearABRepeat) {

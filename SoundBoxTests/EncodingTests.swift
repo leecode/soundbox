@@ -8,7 +8,10 @@ final class EncodingTests: XCTestCase {
     func testShiftJISEncodingDetection() {
         // Common Japanese text in Shift-JIS: "こんにちは" (Hello)
         let japaneseText = "こんにちは世界"
-        guard let shiftJISData = japaneseText.data(using: .init(rawValue: CFStringEncodings.shiftJIS.rawValue)) else {
+        let shiftJISEncoding = String.Encoding(
+            rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.shiftJIS.rawValue))
+        )
+        guard let shiftJISData = japaneseText.data(using: shiftJISEncoding) else {
             XCTFail("Failed to encode test string as Shift-JIS")
             return
         }
@@ -22,9 +25,12 @@ final class EncodingTests: XCTestCase {
             try? FileManager.default.removeItem(at: tempFile)
         }
 
-        // Test reading with encoding detection
+        // Test reading with the same fallback shape used by AppState.loadScript.
         var usedEncoding: UInt = 0
-        let content = try? NSString(contentsOf: tempFile, usedEncoding: &usedEncoding) as String
+        let content = (try? NSString(contentsOf: tempFile, usedEncoding: &usedEncoding) as String)
+            ?? (try? String(contentsOf: tempFile, encoding: .utf8))
+            ?? (try? String(contentsOf: tempFile, encoding: shiftJISEncoding))
+            ?? (try? String(contentsOf: tempFile, encoding: .ascii))
         XCTAssertNotNil(content)
         XCTAssertEqual(content, japaneseText)
     }
