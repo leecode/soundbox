@@ -29,7 +29,24 @@
 		A1000020 /* UpdateBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021; };
 		A1000021 /* FloatingSubtitlePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022; };
 		A1000022 /* FloatingSubtitleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000023; };
+		A1000023 /* CompanionMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000024; };
+		A1000024 /* CompanionWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000025; };
+		A1000025 /* CompanionControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026; };
+		B1000001 /* VTTParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
+		B1000002 /* BookmarkManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002; };
+		B1000003 /* EncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003; };
+		B1000004 /* CompanionWebServerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000004; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B9000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A8000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A6000001;
+			remoteInfo = SoundBox;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A2000001 /* SoundBoxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundBoxApp.swift; sourceTree = "<group>"; };
@@ -56,10 +73,25 @@
 		A2000021 /* UpdateBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateBannerView.swift; sourceTree = "<group>"; };
 		A2000022 /* FloatingSubtitlePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingSubtitlePanel.swift; sourceTree = "<group>"; };
 		A2000023 /* FloatingSubtitleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingSubtitleView.swift; sourceTree = "<group>"; };
+		A2000024 /* CompanionMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionMessages.swift; sourceTree = "<group>"; };
+		A2000025 /* CompanionWebServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionWebServer.swift; sourceTree = "<group>"; };
+		A2000026 /* CompanionControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionControlView.swift; sourceTree = "<group>"; };
+		B2000001 /* VTTParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTTParserTests.swift; sourceTree = "<group>"; };
+		B2000002 /* BookmarkManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkManagerTests.swift; sourceTree = "<group>"; };
+		B2000003 /* EncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncodingTests.swift; sourceTree = "<group>"; };
+		B2000004 /* CompanionWebServerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionWebServerTests.swift; sourceTree = "<group>"; };
+		B3000001 /* SoundBoxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SoundBoxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A4000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B4000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -73,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				A5000002 /* SoundBox */,
+				B5000001 /* SoundBoxTests */,
 				A5000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +123,7 @@
 				A5000012 /* Managers */,
 				A5000013 /* Update */,
 				A5000014 /* Floating */,
+				A5000015 /* Companion */,
 				A5000011 /* Resources */,
 			);
 			path = SoundBox;
@@ -99,6 +133,7 @@
 			isa = PBXGroup;
 			children = (
 				A3000001 /* SoundBox.app */,
+				B3000001 /* SoundBoxTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -130,6 +165,7 @@
 				A2000013 /* SubtitlePreviewPanel.swift */,
 				A2000017 /* BookmarkOverlay.swift */,
 				A2000018 /* ScriptView.swift */,
+				A2000026 /* CompanionControlView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -203,6 +239,26 @@
 			path = Floating;
 			sourceTree = "<group>";
 		};
+		A5000015 /* Companion */ = {
+			isa = PBXGroup;
+			children = (
+				A2000024 /* CompanionMessages.swift */,
+				A2000025 /* CompanionWebServer.swift */,
+			);
+			path = Companion;
+			sourceTree = "<group>";
+		};
+		B5000001 /* SoundBoxTests */ = {
+			isa = PBXGroup;
+			children = (
+				B2000001 /* VTTParserTests.swift */,
+				B2000002 /* BookmarkManagerTests.swift */,
+				B2000003 /* EncodingTests.swift */,
+				B2000004 /* CompanionWebServerTests.swift */,
+			);
+			path = SoundBoxTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -223,6 +279,24 @@
 			productReference = A3000001 /* SoundBox.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B6000001 /* SoundBoxTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7000001 /* Build configuration list for PBXNativeTarget "SoundBoxTests" */;
+			buildPhases = (
+				B6000002 /* Sources */,
+				B4000001 /* Frameworks */,
+				B6000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B9000002 /* PBXTargetDependency */,
+			);
+			name = SoundBoxTests;
+			productName = SoundBoxTests;
+			productReference = B3000001 /* SoundBoxTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -235,6 +309,10 @@
 				TargetAttributes = {
 					A6000001 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					B6000001 = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = A6000001;
 					};
 				};
 			};
@@ -253,6 +331,7 @@
 			projectRoot = "";
 			targets = (
 				A6000001 /* SoundBox */,
+				B6000001 /* SoundBoxTests */,
 			);
 		};
 /* End PBXProject section */
@@ -264,6 +343,13 @@
 				files = (
 					A1000018 /* Assets.xcassets in Resources */,
 				);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B6000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -294,10 +380,32 @@
 				A1000020 /* UpdateBannerView.swift in Sources */,
 				A1000021 /* FloatingSubtitlePanel.swift in Sources */,
 				A1000022 /* FloatingSubtitleView.swift in Sources */,
+				A1000023 /* CompanionMessages.swift in Sources */,
+				A1000024 /* CompanionWebServer.swift in Sources */,
+				A1000025 /* CompanionControlView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B6000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000001 /* VTTParserTests.swift in Sources */,
+				B1000002 /* BookmarkManagerTests.swift in Sources */,
+				B1000003 /* EncodingTests.swift in Sources */,
+				B1000004 /* CompanionWebServerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B9000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A6000001 /* SoundBox */;
+			targetProxy = B9000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A7000003 /* Debug */ = {
@@ -474,6 +582,50 @@
 			};
 			name = Release;
 		};
+		B7000002 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.soundbox.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SoundBox.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SoundBox";
+			};
+			name = Debug;
+		};
+		B7000003 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.soundbox.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SoundBox.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SoundBox";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -491,6 +643,15 @@
 			buildConfigurations = (
 				A7000003 /* Debug */,
 				A7000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B7000001 /* Build configuration list for PBXNativeTarget "SoundBoxTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B7000002 /* Debug */,
+				B7000003 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

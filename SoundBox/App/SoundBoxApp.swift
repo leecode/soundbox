@@ -302,6 +302,7 @@ class AppState: ObservableObject {
     var playbackPositionManager = PlaybackPositionManager()
     var bookmarkManager = BookmarkManager()
     var sleepTimerState = SleepTimerState()
+    var companionServer = CompanionWebServer()
     private var lastPositionSaveTime: TimeInterval = 0
     private var sleepTimer: Timer?
     private var fadeTimer: Timer?
@@ -548,6 +549,11 @@ class AppState: ObservableObject {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
 
+        // 将 companionServer 的变化传播到 AppState
+        companionServer.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
         // 注意：不传播 playerState 和 playbackProgress 的高频更新
         // 需要这些更新的视图应直接观察 playerState
 
@@ -682,6 +688,92 @@ class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Companion Web
+    func startCompanionServer() {
+        companionServer.start(
+            stateProvider: { [weak self] in
+                self?.makeCompanionPlaybackState() ?? CompanionPlaybackState(
+                    trackTitle: "未选择音频",
+                    artist: nil,
+                    playbackState: "stopped",
+                    currentTime: 0,
+                    duration: 0,
+                    playbackRate: 1.0,
+                    currentSubtitle: nil,
+                    subtitles: []
+                )
+            },
+            commandHandler: { [weak self] command in
+                DispatchQueue.main.async {
+                    self?.handleCompanionCommand(command)
+                }
+            }
+        )
+    }
+
+    func stopCompanionServer() {
+        companionServer.stop()
+    }
+
+    private func makeCompanionPlaybackState() -> CompanionPlaybackState {
+        if !Thread.isMainThread {
+            var state: CompanionPlaybackState?
+            DispatchQueue.main.sync {
+                state = makeCompanionPlaybackState()
+            }
+            return state!
+        }
+
+        let currentCueID = subtitleManager.currentCue?.id
+        let cues = subtitleManager.cues.map { cue in
+            CompanionSubtitleCue(
+                id: cue.id,
+                startTime: cue.startTime,
+                endTime: cue.endTime,
+                text: cue.text,
+                isActive: cue.id == currentCueID
+            )
+        }
+
+        return CompanionPlaybackState(
+            trackTitle: playlist.currentTrack?.title ?? "未选择音频",
+            artist: playlist.currentTrack?.artist,
+            playbackState: playerState.playbackState.companionName,
+            currentTime: playbackProgress.currentTime,
+            duration: playbackProgress.totalDuration,
+            playbackRate: playerState.playbackRate,
+            currentSubtitle: playerState.currentSubtitle,
+            subtitles: cues
+        )
+    }
+
+    private func handleCompanionCommand(_ command: CompanionCommand) {
+        switch command.name {
+        case "togglePlayback":
+            togglePlayback()
+        case "previousTrack":
+            goToPreviousTrack()
+        case "nextTrack":
+            goToNextTrack()
+        case "backward15":
+            seekTo(playbackProgress.currentTime - 15)
+        case "forward15":
+            seekTo(playbackProgress.currentTime + 15)
+        case "seek":
+            if let time = command.time {
+                seekTo(time)
+            }
+        case "setRate":
+            if let rate = command.rate {
+                setPlaybackSpeed(rate)
+            }
+        case "addBookmark":
+            addBookmarkAtCurrentPosition(label: command.label ?? "")
+        default:
+            break
+        }
+    }
+
     // MARK: - Play from Subtitle
     func playFromSubtitle(_ item: SubtitlePreviewItem) {
         // 1. 切换到对应 track
@@ -723,7 +815,10 @@ class AppState: ObservableObject {
                 content = str
             } else {
                 // Fallback chain: UTF-8 → Shift-JIS → ASCII
-                let encodings: [String.Encoding] = [.utf8, .init(rawValue: UInt(CFStringEncodings.shiftJIS.rawValue)), .ascii]
+                let shiftJISEncoding = String.Encoding(
+                    rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.shiftJIS.rawValue))
+                )
+                let encodings: [String.Encoding] = [.utf8, shiftJISEncoding, .ascii]
                 for encoding in encodings {
                     if let str = try? String(contentsOf: url, encoding: encoding) {
                         content = str

@@ -212,6 +212,17 @@ enum PlaybackState: Equatable {
     var isPlaying: Bool {
         return self == .playing
     }
+
+    var companionName: String {
+        switch self {
+        case .stopped: return "stopped"
+        case .playing: return "playing"
+        case .paused: return "paused"
+        case .loading: return "loading"
+        case .finished: return "finished"
+        case .error: return "error"
+        }
+    }
 }
 
 // MARK: - Subtitle Preview Item
