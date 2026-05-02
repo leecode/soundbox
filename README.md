@@ -1,97 +1,124 @@
 # SoundBox
 
-专为 DLsite 同人音声设计的 macOS 音频播放器，支持字幕显示和便捷的播放列表管理。
+English | [Simplified Chinese](README.zh-CN.md)
 
-## 功能特性
+SoundBox is a native macOS audio player designed for DLsite voice works, ASMR, and voice dramas. It focuses on local playback, VTT subtitle support, playlist management, bookmarks, media keys, and Hi-Res audio-friendly workflows.
 
-- **多格式支持** - WAV, FLAC, AIFF, ALAC, MP3, AAC, OGG 等常见音频格式
-- **VTT 字幕** - 自动加载并同步显示 VTT 格式字幕，支持字幕预览面板
-- **播放列表管理** - 支持文件夹导入、拖放排序
-- **文件夹历史** - 记录最近打开的文件夹，快速访问收藏内容
-- **播放控制** - 上一曲/下一曲、播放/暂停、循环模式（关闭/单曲/列表）
-- **音量控制** - 精确的音量调节和静音切换
-- **进度控制** - 可视化进度条，支持拖拽跳转和时间预览
-- **媒体键支持** - 键盘媒体键控制播放/暂停/上下曲
-- **封面显示** - 自动加载文件夹中的封面图片
+## Features
 
-## 系统要求
+- **Native macOS app** - Built with SwiftUI and AVAudioEngine.
+- **Local-first playback** - Play your local voice work collections without relying on online players.
+- **Broad audio format support** - Supports WAV, FLAC, AIFF, ALAC, MP3, AAC, OGG, and other common formats available through the macOS audio stack.
+- **Hi-Res audio display** - Detects high-resolution files at 96 kHz or 24-bit and above.
+- **VTT subtitles** - Automatically finds matching `.vtt` files, syncs subtitles during playback, and provides a subtitle preview panel.
+- **Script support** - Loads matching `.txt` scripts for voice works when available.
+- **Playlist management** - Import folders, browse tracks, prevent duplicates, and keep track order tidy.
+- **Folder history** - Quickly reopen recently used local collections.
+- **Playback controls** - Play, pause, previous/next track, seek, repeat modes, volume, mute, and playback speed.
+- **Bookmarks** - Mark important timestamps and jump back to them later.
+- **Sleep timer** - Stop playback after a selected duration, with a short fade-out near the end.
+- **Media keys** - Control playback with macOS keyboard media keys.
+- **Artwork and metadata** - Loads folder artwork and embedded track metadata when available.
+- **Update checks** - Can check GitHub releases for newer DMG builds.
 
-- macOS 14.0+
-- Xcode 15.0+
+## Requirements
 
-## 构建方法
+- macOS 14.0 or later
+- Xcode 15.0 or later
 
-1. 克隆仓库
-```bash
-git clone https://github.com/yourusername/SoundBox.git
-cd SoundBox
-```
+## Build
 
-2. 使用 Xcode 打开项目
+Open the project in Xcode:
+
 ```bash
 open SoundBox.xcodeproj
 ```
 
-3. 构建并运行 (⌘R)
+Build and run from Xcode with `Cmd+R`.
 
-或者使用命令行构建：
+You can also build from the command line:
+
 ```bash
 xcodebuild -project SoundBox.xcodeproj -scheme SoundBox build
 ```
 
-## 项目结构
+## Usage
 
-```
+1. Choose `File` -> `Open Folder...` (`Cmd+O`) and select a folder that contains audio files.
+2. Pick a track from the playlist.
+3. Use the bottom control bar to play, pause, seek, change volume, switch repeat mode, or change playback speed.
+4. Open the subtitle preview panel with `Cmd+S` when VTT subtitles are available.
+5. Add bookmarks with `Cmd+B` while listening.
+
+## Keyboard Shortcuts
+
+- `Cmd+O` - Open folders
+- `Space` - Play or pause
+- `Left Arrow` / `Right Arrow` - Seek backward or forward 5 seconds
+- `Cmd+Left Arrow` / `Cmd+Right Arrow` - Previous or next track
+- `Cmd+S` - Toggle subtitle preview
+- `Cmd+B` - Add bookmark
+- `Cmd+R` - Cycle repeat mode
+- `Shift+Cmd+F` - Toggle floating subtitles
+
+## Project Structure
+
+```text
 SoundBox/
 ├── App/
-│   └── SoundBoxApp.swift          # 应用入口和菜单
+│   └── SoundBoxApp.swift          # App entry, menus, AppState coordinator
 ├── Models/
-│   └── Models.swift               # 数据模型（播放列表、历史记录等）
+│   ├── Models.swift               # Audio, track, playlist, playback models
+│   └── Bookmark.swift             # Bookmark model
 ├── Views/
-│   ├── ContentView.swift          # 主视图
-│   ├── PlaylistView.swift         # 播放列表侧边栏
-│   ├── PlayerControlBar.swift     # 播放控制栏
-│   ├── SubtitleView.swift         # 字幕显示视图
-│   └── SubtitlePreviewPanel.swift # 字幕预览面板
+│   ├── ContentView.swift          # Main app layout
+│   ├── PlaylistView.swift         # Playlist sidebar
+│   ├── PlayerControlBar.swift     # Playback controls
+│   ├── SubtitleView.swift         # Current subtitle display
+│   └── SubtitlePreviewPanel.swift # Subtitle browser
 ├── AudioEngine/
-│   └── AudioEngine.swift          # 核心音频引擎
+│   └── AudioEngine.swift          # AVAudioEngine playback wrapper
 ├── Decoder/
-│   └── LosslessDecoder.swift      # 无损音频解码器
+│   └── LosslessDecoder.swift      # Audio metadata and format reader
 ├── Subtitle/
-│   └── VTTParser.swift            # VTT 字幕解析器
+│   └── VTTParser.swift            # VTT parser and subtitle managers
+├── Floating/
+│   └── FloatingSubtitlePanel.swift
+├── Managers/
+│   └── BookmarkManager.swift
+├── Update/
+│   └── UpdateManager.swift
 └── Utils/
-    └── FileScanner.swift          # 文件夹扫描工具
+    ├── FileScanner.swift          # Folder scanner and sidecar file matching
+    ├── FormatUtils.swift
+    └── ImageCache.swift
 ```
 
-## 快捷键
+## Architecture
 
-- ⌘O - 打开文件夹
-- ⌘S - 切换字幕预览面板
-- ␣ (空格) - 播放/暂停
-- ← → - 快退/快进 5 秒
+SoundBox uses a central `AppState` object to coordinate playback, playlists, subtitles, bookmarks, folder history, sleep timer state, and update checks.
 
-## 使用方法
+`AudioEngine` is a singleton wrapper around `AVAudioEngine` and `AVAudioPlayerNode`. It reports playback state and progress through a delegate, while `AppState` bridges those updates into SwiftUI-friendly observable state.
 
-1. 点击菜单栏 "文件" → "打开文件夹..." (⌘O) 选择包含音频文件的文件夹
-2. 从播放列表中选择要播放的音声文件
-3. 使用底部控制栏进行播放控制：
-   - ⏮ ⏸ ▶️ ⏭ - 播放控制
-   - 🔁 - 循环模式切换（关闭/单曲/列表）
-   - 📊 - 进度条拖拽跳转
-   - 🔊 - 音量调节
-4. 点击字幕按钮 (⌘S) 打开字幕预览面板
+Subtitle handling is split between real-time sync and preview preloading:
 
-## 开发路线
+- `SubtitleManager` updates the current subtitle during playback.
+- `SubtitlePreviewManager` preloads cues for the whole playlist so users can browse subtitles across tracks.
 
-- [x] 基础播放功能
-- [x] VTT 字幕同步显示
-- [x] 播放列表管理
-- [x] 文件夹历史记录
-- [x] 循环模式（关闭/单曲/列表）
-- [x] 进度条时间预览
-- [x] 媒体键支持（播放/暂停/上下曲）
-- [x] 封面显示
+## Roadmap
 
-## 许可证
+- [x] Basic local playback
+- [x] VTT subtitle sync
+- [x] Subtitle preview panel
+- [x] Playlist and folder import
+- [x] Folder history
+- [x] Repeat modes
+- [x] Playback speed
+- [x] Sleep timer
+- [x] Bookmarks
+- [x] Media key support
+- [x] Artwork and metadata display
+
+## License
 
 MIT License
