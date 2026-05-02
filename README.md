@@ -8,6 +8,7 @@ SoundBox is a native macOS audio player designed for DLsite voice works, ASMR, a
 
 - **Native macOS app** - Built with SwiftUI and AVAudioEngine.
 - **Local-first playback** - Play your local voice work collections without relying on online players.
+- **Phone companion** - Start a token-protected local web companion and control playback from a phone browser on the same Wi-Fi.
 - **Broad audio format support** - Supports WAV, FLAC, AIFF, ALAC, MP3, AAC, OGG, and other common formats available through the macOS audio stack.
 - **Hi-Res audio display** - Detects high-resolution files at 96 kHz or 24-bit and above.
 - **VTT subtitles** - Automatically finds matching `.vtt` files, syncs subtitles during playback, provides grouped subtitle previews, and can follow the currently playing cue.
@@ -55,6 +56,7 @@ xcodebuild -project SoundBox.xcodeproj -scheme SoundBox build
 6. Use the playback menu to set A-B loops or loop the current subtitle cue.
 7. Open floating subtitles with `Shift+Cmd+F`.
 8. Add bookmarks with `Cmd+B` while listening.
+9. Click the phone button in the bottom control bar, start the companion server, and open the generated URL on a phone connected to the same Wi-Fi.
 
 ## Keyboard Shortcuts
 
@@ -75,6 +77,9 @@ SoundBox/
 │   └── SoundBoxApp.swift          # App entry, menus, AppState coordinator
 ├── AudioEngine/
 │   └── AudioEngine.swift          # AVAudioEngine playback wrapper
+├── Companion/
+│   ├── CompanionMessages.swift    # Codable state and command payloads
+│   └── CompanionWebServer.swift   # Local web companion server and phone UI
 ├── Decoder/
 │   └── LosslessDecoder.swift      # Audio metadata and format reader
 ├── Floating/
@@ -95,6 +100,7 @@ SoundBox/
 │   └── ImageCache.swift
 ├── Views/
 │   ├── ContentView.swift          # Main app layout
+│   ├── CompanionControlView.swift # Companion server popover
 │   ├── PlaylistView.swift         # Playlist sidebar
 │   ├── PlayerControlBar.swift     # Playback controls
 │   ├── SubtitleView.swift         # Current subtitle display
@@ -114,6 +120,8 @@ Subtitle handling is split between real-time sync and preview preloading:
 - `SubtitleManager` updates the current subtitle during playback.
 - `SubtitlePreviewManager` preloads cues for the whole playlist so users can browse subtitles across tracks.
 
+The phone companion runs as a local HTTP server from the Mac app. It serves a small mobile web UI and token-protected JSON endpoints for playback state and commands. Audio continues to play on the Mac; the phone acts as a remote control and subtitle display.
+
 ## Roadmap
 
 - [x] Basic local playback
@@ -129,6 +137,7 @@ Subtitle handling is split between real-time sync and preview preloading:
 - [x] Bookmarks
 - [x] Media key support
 - [x] Artwork and metadata display
+- [x] Local phone companion web app
 
 ## License
 

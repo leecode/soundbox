@@ -8,6 +8,7 @@
 
 - **多格式支持** - WAV, FLAC, AIFF, ALAC, MP3, AAC, OGG 等常见音频格式
 - **VTT 字幕** - 自动加载并同步显示 VTT 格式字幕，支持字幕预览面板
+- **手机伴侣** - 在 Mac 上启动带 token 的局域网网页，手机浏览器可控制播放并查看字幕
 - **播放列表管理** - 支持文件夹导入、拖放排序
 - **文件夹历史** - 记录最近打开的文件夹，快速访问收藏内容
 - **播放控制** - 上一曲/下一曲、播放/暂停、循环模式（关闭/单曲/列表）
@@ -52,8 +53,12 @@ SoundBox/
 │   └── SoundBoxApp.swift          # 应用入口和菜单
 ├── Models/
 │   └── Models.swift               # 数据模型（播放列表、历史记录等）
+├── Companion/
+│   ├── CompanionMessages.swift    # 手机伴侣状态和命令消息
+│   └── CompanionWebServer.swift   # 局域网网页服务和手机端界面
 ├── Views/
 │   ├── ContentView.swift          # 主视图
+│   ├── CompanionControlView.swift # 手机伴侣控制弹窗
 │   ├── PlaylistView.swift         # 播放列表侧边栏
 │   ├── PlayerControlBar.swift     # 播放控制栏
 │   ├── SubtitleView.swift         # 字幕显示视图
@@ -85,6 +90,8 @@ SoundBox/
    - 📊 - 进度条拖拽跳转
    - 🔊 - 音量调节
 4. 点击字幕按钮 (⌘S) 打开字幕预览面板
+5. 点击底部控制栏的手机按钮，启动手机伴侣服务，然后用同一 Wi-Fi 下的手机浏览器打开生成的地址
+6. 在手机网页上可以播放/暂停、上一曲/下一曲、快进/快退、拖动进度、调整倍速、点击字幕跳转和添加书签
 
 ## 开发路线
 
@@ -96,6 +103,7 @@ SoundBox/
 - [x] 进度条时间预览
 - [x] 媒体键支持（播放/暂停/上下曲）
 - [x] 封面显示
+- [x] 手机伴侣网页控制
 
 ## 许可证
 
