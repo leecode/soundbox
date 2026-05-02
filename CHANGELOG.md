@@ -2,6 +2,19 @@
 
 All notable changes to SoundBox will be documented in this file.
 
+## [0.1.1-beta] - 2026-05-02
+
+### Added
+
+- A-B repeat controls with manual loop points.
+- Current subtitle cue looping for subtitle-driven listening.
+- Grouped subtitle preview navigation with follow-current-cue behavior.
+- Floating subtitle appearance fallback that applies the selected app theme through AppKit.
+
+### Changed
+
+- Updated the English README to document A-B repeat, floating subtitles, and subtitle preview follow mode.
+
 ## [0.1.0-beta] - 2026-05-02
 
 ### Added
