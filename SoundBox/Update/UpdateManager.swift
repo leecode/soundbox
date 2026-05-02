@@ -11,7 +11,7 @@ struct GitHubRelease: Codable {
     let assets: [GitHubAsset]
 
     var dmgAsset: GitHubAsset? {
-        assets.first { $0.name.hasSuffix(".dmg") }
+        assets.first { $0.name.lowercased().hasSuffix(".dmg") }
     }
 
     enum CodingKeys: String, CodingKey {
@@ -25,6 +25,12 @@ struct GitHubRelease: Codable {
 
 struct GitHubAsset: Codable {
     let name: String
+    let browserDownloadUrl: String
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case browserDownloadUrl = "browser_download_url"
+    }
 }
 
 // MARK: - Version Comparison
@@ -64,6 +70,8 @@ class UpdateManager: ObservableObject {
     @Published var updateAvailable: GitHubRelease?
     @Published var isUpToDate: Bool = false
     @Published var isChecking = false
+    @Published var isDownloadingUpdate = false
+    @Published var downloadErrorMessage: String?
     @Published var autoCheckUpdates: Bool {
         didSet { UserDefaults.standard.set(autoCheckUpdates, forKey: "autoCheckUpdates") }
     }
@@ -136,6 +144,7 @@ class UpdateManager: ObservableObject {
                 if force || dismissedVersion != remoteVersion {
                     updateAvailable = release
                     isUpToDate = false
+                    downloadErrorMessage = nil
                 }
             } else if force {
                 isUpToDate = true
@@ -160,6 +169,7 @@ class UpdateManager: ObservableObject {
             dismissedVersion = release.tagName
         }
         updateAvailable = nil
+        downloadErrorMessage = nil
     }
 
     func dismissUpToDate() {
@@ -173,5 +183,54 @@ class UpdateManager: ObservableObject {
            let url = URL(string: release.htmlUrl) {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    func downloadAndOpenUpdate() async {
+        guard !isDownloadingUpdate else { return }
+
+        guard let asset = updateAvailable?.dmgAsset,
+              let downloadURL = URL(string: asset.browserDownloadUrl) else {
+            downloadErrorMessage = "未找到安装包"
+            return
+        }
+
+        isDownloadingUpdate = true
+        downloadErrorMessage = nil
+
+        do {
+            var request = URLRequest(url: downloadURL)
+            request.timeoutInterval = 60
+
+            let (temporaryURL, response) = try await URLSession.shared.download(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+
+            let destinationURL = downloadDestination(for: asset)
+            let fileManager = FileManager.default
+
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                try fileManager.removeItem(at: destinationURL)
+            }
+
+            try fileManager.moveItem(at: temporaryURL, to: destinationURL)
+            isDownloadingUpdate = false
+            if !NSWorkspace.shared.open(destinationURL) {
+                downloadErrorMessage = "已下载，打开失败"
+            }
+        } catch {
+            isDownloadingUpdate = false
+            downloadErrorMessage = "下载失败，请重试"
+        }
+    }
+
+    private func downloadDestination(for asset: GitHubAsset) -> URL {
+        let downloadsDirectory = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+        let safeFileName = asset.name
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        return downloadsDirectory.appendingPathComponent(safeFileName)
     }
 }

@@ -9,10 +9,14 @@ struct UpdateBannerView: View {
                 bannerContent(
                     icon: "arrow.triangle.2.circlepath",
                     iconColor: .accentColor,
-                    text: "新版本 \(stripVPrefix(release.tagName)) 可用",
-                    showDownload: true
+                    text: updateText(for: release),
+                    showDownload: true,
+                    isDownloadDisabled: updateManager.isDownloadingUpdate,
+                    downloadButtonTitle: updateManager.isDownloadingUpdate ? "下载中..." : "下载"
                 ) {
-                    updateManager.openReleasePage()
+                    Task {
+                        await updateManager.downloadAndOpenUpdate()
+                    }
                 } dismissAction: {
                     withAnimation(.easeInOut) {
                         updateManager.dismiss()
@@ -24,7 +28,9 @@ struct UpdateBannerView: View {
                     icon: "checkmark.circle",
                     iconColor: .green,
                     text: "已是最新版本",
-                    showDownload: false
+                    showDownload: false,
+                    isDownloadDisabled: false,
+                    downloadButtonTitle: "下载"
                 ) {} dismissAction: {
                     withAnimation(.easeInOut) {
                         updateManager.dismissUpToDate()
@@ -42,6 +48,8 @@ struct UpdateBannerView: View {
         iconColor: Color,
         text: String,
         showDownload: Bool,
+        isDownloadDisabled: Bool,
+        downloadButtonTitle: String,
         downloadAction: @escaping () -> Void,
         dismissAction: @escaping () -> Void
     ) -> some View {
@@ -60,11 +68,12 @@ struct UpdateBannerView: View {
 
             if showDownload {
                 Button(action: downloadAction) {
-                    Text("下载")
+                    Text(downloadButtonTitle)
                         .font(.subheadline)
                         .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
+                .disabled(isDownloadDisabled)
                 .accessibilityLabel("下载新版本")
             }
 
@@ -93,5 +102,12 @@ struct UpdateBannerView: View {
 
     private func stripVPrefix(_ tag: String) -> String {
         tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+    }
+
+    private func updateText(for release: GitHubRelease) -> String {
+        if let message = updateManager.downloadErrorMessage {
+            return message
+        }
+        return "新版本 \(stripVPrefix(release.tagName)) 可用"
     }
 }
