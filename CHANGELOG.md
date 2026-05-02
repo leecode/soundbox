@@ -2,6 +2,19 @@
 
 All notable changes to SoundBox will be documented in this file.
 
+## [0.1.2-beta] - 2026-05-02
+
+### Added
+
+- Local web companion for controlling SoundBox from a phone browser on the same Wi-Fi.
+- Companion controls for playback, track navigation, seeking, speed changes, subtitle jumps, and bookmarks.
+- Token-protected companion API endpoints for local network access.
+- SoundBox unit test target and shared scheme coverage for companion server authentication and command dispatch.
+
+### Fixed
+
+- Shift-JIS script fallback now uses the correct NSString encoding conversion.
+
 ## [0.1.1-beta] - 2026-05-02
 
 ### Added
