@@ -228,11 +228,19 @@ class SubtitlePreviewManager: ObservableObject {
     /// 找到离当前播放时间最近的字幕并高亮（带节流优化）
     func updateActiveItem(for currentTime: TimeInterval, currentTrackIndex: Int) {
         // 节流：检查距离上次更新是否足够
-        let now = currentTime
-        if now - lastUpdateTime < updateThrottle {
+        if currentTime >= lastUpdateTime, currentTime - lastUpdateTime < updateThrottle {
             return
         }
+        lastUpdateTime = currentTime
+        setActiveItem(for: currentTime, currentTrackIndex: currentTrackIndex)
+    }
 
+    func refreshActiveItem(for currentTime: TimeInterval, currentTrackIndex: Int) {
+        lastUpdateTime = currentTime
+        setActiveItem(for: currentTime, currentTrackIndex: currentTrackIndex)
+    }
+
+    private func setActiveItem(for currentTime: TimeInterval, currentTrackIndex: Int) {
         guard let indices = trackIndexMap[currentTrackIndex], !indices.isEmpty else {
             if activeItemId != nil {
                 activeItemId = nil
@@ -259,7 +267,6 @@ class SubtitlePreviewManager: ObservableObject {
         let newActiveId = closestItem?.id
         if newActiveId != activeItemId {
             activeItemId = newActiveId
-            lastUpdateTime = now
         }
     }
 

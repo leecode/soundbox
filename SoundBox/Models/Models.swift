@@ -184,6 +184,22 @@ class PlayerState: ObservableObject {
     }
 }
 
+// MARK: - A-B Repeat
+struct ABRepeatRange: Equatable {
+    let startTime: TimeInterval
+    let endTime: TimeInterval
+    let source: ABRepeatSource
+
+    var duration: TimeInterval {
+        endTime - startTime
+    }
+}
+
+enum ABRepeatSource: Equatable {
+    case manual
+    case subtitle
+}
+
 // MARK: - Playback State
 enum PlaybackState: Equatable {
     case stopped

@@ -10,7 +10,10 @@ SoundBox is a native macOS audio player designed for DLsite voice works, ASMR, a
 - **Local-first playback** - Play your local voice work collections without relying on online players.
 - **Broad audio format support** - Supports WAV, FLAC, AIFF, ALAC, MP3, AAC, OGG, and other common formats available through the macOS audio stack.
 - **Hi-Res audio display** - Detects high-resolution files at 96 kHz or 24-bit and above.
-- **VTT subtitles** - Automatically finds matching `.vtt` files, syncs subtitles during playback, and provides a subtitle preview panel.
+- **VTT subtitles** - Automatically finds matching `.vtt` files, syncs subtitles during playback, provides grouped subtitle previews, and can follow the currently playing cue.
+- **Subtitle navigation** - Browse cues by track and jump directly to a subtitle timestamp.
+- **Floating subtitles** - Show the current subtitle in a separate floating panel with remembered window position.
+- **A-B loop** - Set A and B points manually or loop the current subtitle cue.
 - **Script support** - Loads matching `.txt` scripts for voice works when available.
 - **Playlist management** - Import folders, browse tracks, prevent duplicates, and keep track order tidy.
 - **Folder history** - Quickly reopen recently used local collections.
@@ -48,7 +51,10 @@ xcodebuild -project SoundBox.xcodeproj -scheme SoundBox build
 2. Pick a track from the playlist.
 3. Use the bottom control bar to play, pause, seek, change volume, switch repeat mode, or change playback speed.
 4. Open the subtitle preview panel with `Cmd+S` when VTT subtitles are available.
-5. Add bookmarks with `Cmd+B` while listening.
+5. Jump to subtitle lines from the preview panel, or enable follow mode to keep the current cue in view.
+6. Use the playback menu to set A-B loops or loop the current subtitle cue.
+7. Open floating subtitles with `Shift+Cmd+F`.
+8. Add bookmarks with `Cmd+B` while listening.
 
 ## Keyboard Shortcuts
 
@@ -67,31 +73,34 @@ xcodebuild -project SoundBox.xcodeproj -scheme SoundBox build
 SoundBox/
 ├── App/
 │   └── SoundBoxApp.swift          # App entry, menus, AppState coordinator
+├── AudioEngine/
+│   └── AudioEngine.swift          # AVAudioEngine playback wrapper
+├── Decoder/
+│   └── LosslessDecoder.swift      # Audio metadata and format reader
+├── Floating/
+│   ├── FloatingSubtitlePanel.swift # Floating subtitle window
+│   └── FloatingSubtitleView.swift  # Floating subtitle view
+├── Managers/
+│   └── BookmarkManager.swift      # Bookmark persistence and lookup
 ├── Models/
 │   ├── Models.swift               # Audio, track, playlist, playback models
 │   └── Bookmark.swift             # Bookmark model
+├── Subtitle/
+│   └── VTTParser.swift            # VTT parser and subtitle managers
+├── Update/
+│   └── UpdateManager.swift        # GitHub release update checks
+├── Utils/
+│   ├── FileScanner.swift          # Folder scanner and sidecar file matching
+│   ├── FormatUtils.swift
+│   └── ImageCache.swift
 ├── Views/
 │   ├── ContentView.swift          # Main app layout
 │   ├── PlaylistView.swift         # Playlist sidebar
 │   ├── PlayerControlBar.swift     # Playback controls
 │   ├── SubtitleView.swift         # Current subtitle display
 │   └── SubtitlePreviewPanel.swift # Subtitle browser
-├── AudioEngine/
-│   └── AudioEngine.swift          # AVAudioEngine playback wrapper
-├── Decoder/
-│   └── LosslessDecoder.swift      # Audio metadata and format reader
-├── Subtitle/
-│   └── VTTParser.swift            # VTT parser and subtitle managers
-├── Floating/
-│   └── FloatingSubtitlePanel.swift
-├── Managers/
-│   └── BookmarkManager.swift
-├── Update/
-│   └── UpdateManager.swift
-└── Utils/
-    ├── FileScanner.swift          # Folder scanner and sidecar file matching
-    ├── FormatUtils.swift
-    └── ImageCache.swift
+└── Resources/
+    └── Info.plist                 # App configuration
 ```
 
 ## Architecture
@@ -109,10 +118,12 @@ Subtitle handling is split between real-time sync and preview preloading:
 
 - [x] Basic local playback
 - [x] VTT subtitle sync
-- [x] Subtitle preview panel
+- [x] Grouped subtitle preview and follow mode
+- [x] Floating subtitle panel
 - [x] Playlist and folder import
 - [x] Folder history
 - [x] Repeat modes
+- [x] A-B loop and current subtitle cue loop
 - [x] Playback speed
 - [x] Sleep timer
 - [x] Bookmarks

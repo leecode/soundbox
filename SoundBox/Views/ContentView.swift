@@ -176,6 +176,7 @@ struct SidePanelView: View {
                     subtitleManager: appState.subtitleManager,
                     subtitlePreviewManager: appState.subtitlePreviewManager,
                     currentTrackIndex: appState.playlist.currentIndex,
+                    currentTime: appState.playbackProgress.currentTime,
                     onClose: { appState.showSubtitlePanel = false },
                     onSelectSubtitle: { appState.playFromSubtitle($0) }
                 )

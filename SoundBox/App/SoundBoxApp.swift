@@ -127,6 +127,29 @@ struct SoundBoxApp: App {
 
                 Divider()
 
+                Button("设置循环起点 A") {
+                    appState.setABRepeatStart()
+                }
+                .disabled(appState.playlist.currentTrack == nil)
+
+                Button("设置循环终点 B") {
+                    appState.setABRepeatEnd()
+                }
+                .disabled(appState.playlist.currentTrack == nil)
+
+                Button("循环当前字幕") {
+                    appState.loopCurrentSubtitle()
+                }
+                .disabled(appState.playlist.currentTrack == nil || appState.subtitleManager.cues.isEmpty)
+
+                if appState.abRepeatRange != nil || appState.pendingABRepeatStart != nil {
+                    Button("取消 A-B 循环") {
+                        appState.clearABRepeat()
+                    }
+                }
+
+                Divider()
+
                 Menu("播放速度") {
                     ForEach(AppState.playbackSpeedOptions, id: \.self) { speed in
                         Button(speedLabel(speed)) {
@@ -261,6 +284,8 @@ class AppState: ObservableObject {
     @Published var showBookmarkOverlay: Bool = false
     @Published var errorMessage: String?
     @Published var scriptContent: String?
+    @Published var abRepeatRange: ABRepeatRange?
+    @Published var pendingABRepeatStart: TimeInterval?
     var playlist: Playlist = Playlist()
     var subtitleManager = SubtitleManager()
     var subtitlePreviewManager = SubtitlePreviewManager()
@@ -274,6 +299,7 @@ class AppState: ObservableObject {
     private var fadeTimer: Timer?
     private var savedVolumeBeforeFade: Float = 1.0
     private var isSleepFading = false
+    private var lastABRepeatSeekTime: TimeInterval = 0
 
     private let fileScanner = FileScanner()
 
@@ -335,6 +361,7 @@ class AppState: ObservableObject {
     func playTrack(at index: Int) {
         guard playlist.tracks.indices.contains(index) else { return }
         cancelSleepFade(restoreVolume: true)
+        clearABRepeat()
         playlist.selectTrack(at: index)
         restorePlaybackSpeedForCurrentTrack()
         if let track = playlist.currentTrack {
@@ -353,6 +380,7 @@ class AppState: ObservableObject {
         } else {
             return
         }
+        clearABRepeat()
         playlist.selectTrack(at: newIndex)
         restorePlaybackSpeedForCurrentTrack()
         if let track = playlist.currentTrack {
@@ -371,6 +399,7 @@ class AppState: ObservableObject {
         } else {
             return
         }
+        clearABRepeat()
         playlist.selectTrack(at: newIndex)
         restorePlaybackSpeedForCurrentTrack()
         if let track = playlist.currentTrack {
@@ -398,6 +427,54 @@ class AppState: ObservableObject {
         let options = Self.playbackSpeedOptions
         let nextIndex = options.firstIndex(where: { $0 > current + 0.01 }) ?? 0
         setPlaybackSpeed(options[nextIndex])
+    }
+
+    func setABRepeatStart(at time: TimeInterval? = nil) {
+        guard playlist.currentTrack != nil else { return }
+        let startTime = clampedPlaybackTime(time ?? playbackProgress.currentTime)
+        pendingABRepeatStart = startTime
+
+        if let currentRange = abRepeatRange,
+           currentRange.endTime - startTime >= minimumABRepeatDuration {
+            abRepeatRange = ABRepeatRange(startTime: startTime, endTime: currentRange.endTime, source: .manual)
+            pendingABRepeatStart = nil
+        }
+    }
+
+    func setABRepeatEnd(at time: TimeInterval? = nil) {
+        guard playlist.currentTrack != nil else { return }
+        let endTime = clampedPlaybackTime(time ?? playbackProgress.currentTime)
+        let startTime = pendingABRepeatStart ?? abRepeatRange?.startTime ?? playbackProgress.currentTime
+
+        guard endTime - startTime >= minimumABRepeatDuration else {
+            errorMessage = "循环终点需要晚于起点"
+            return
+        }
+
+        abRepeatRange = ABRepeatRange(startTime: startTime, endTime: endTime, source: .manual)
+        pendingABRepeatStart = nil
+    }
+
+    func loopCurrentSubtitle() {
+        guard playlist.currentTrack != nil else { return }
+
+        if !subtitleManager.cues.isEmpty {
+            subtitleManager.update(for: playbackProgress.currentTime)
+        }
+
+        guard let cue = subtitleManager.currentCue,
+              cue.endTime - cue.startTime >= minimumABRepeatDuration else {
+            errorMessage = "当前没有可循环的字幕"
+            return
+        }
+
+        abRepeatRange = ABRepeatRange(startTime: cue.startTime, endTime: cue.endTime, source: .subtitle)
+        pendingABRepeatStart = nil
+    }
+
+    func clearABRepeat() {
+        abRepeatRange = nil
+        pendingABRepeatStart = nil
     }
 
     func startSleepTimer(minutes: Int) {
@@ -474,6 +551,7 @@ class AppState: ObservableObject {
     }
 
     private var cancellables = Set<AnyCancellable>()
+    private let minimumABRepeatDuration: TimeInterval = 0.25
 
     private func updateNowPlayingInfo() {
         var info: [String: Any] = [:]
@@ -506,6 +584,39 @@ class AppState: ObservableObject {
         for key in extraKeys.prefix(max(speedKeys.count - 100, 0)) {
             defaults.removeObject(forKey: key)
         }
+    }
+
+    private func clampedPlaybackTime(_ time: TimeInterval) -> TimeInterval {
+        let duration = max(playbackProgress.totalDuration, playerState.totalDuration)
+        guard duration > 0 else { return max(time, 0) }
+        return min(max(time, 0), duration)
+    }
+
+    private func handleABRepeatIfNeeded(progress: TimeInterval) -> Bool {
+        guard playerState.playbackState == .playing,
+              let range = abRepeatRange,
+              range.duration >= minimumABRepeatDuration,
+              progress >= range.endTime else {
+            return false
+        }
+
+        let now = Date().timeIntervalSince1970
+        guard now - lastABRepeatSeekTime >= 0.2 else {
+            return true
+        }
+
+        lastABRepeatSeekTime = now
+        AudioEngine.shared.seek(to: range.startTime)
+        playbackProgress.currentTime = range.startTime
+        playerState.currentTime = range.startTime
+        subtitlePreviewManager.updateActiveItem(for: range.startTime, currentTrackIndex: playlist.currentIndex)
+
+        if !subtitleManager.cues.isEmpty {
+            subtitleManager.update(for: range.startTime)
+            playerState.currentSubtitle = subtitleManager.currentCue?.text
+        }
+
+        return true
     }
 
     private func startSmoothFade(duration: TimeInterval) {
@@ -566,6 +677,7 @@ class AppState: ObservableObject {
     // MARK: - Play from Subtitle
     func playFromSubtitle(_ item: SubtitlePreviewItem) {
         // 1. 切换到对应 track
+        clearABRepeat()
         playlist.selectTrack(at: item.trackIndex)
         restorePlaybackSpeedForCurrentTrack()
 
@@ -723,6 +835,10 @@ extension AppState: AudioEngineDelegate {
 
             // 更新字幕列表高亮（始终高亮离当前时间最近的字幕）
             self.subtitlePreviewManager.updateActiveItem(for: progress, currentTrackIndex: self.playlist.currentIndex)
+
+            if self.handleABRepeatIfNeeded(progress: progress) {
+                return
+            }
 
             // 更新字幕显示
             guard self.playerState.playbackState == .playing,
