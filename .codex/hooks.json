@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/leecode/ai-workspaces/SoundBox/.codex/hooks/check-gstack.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}
