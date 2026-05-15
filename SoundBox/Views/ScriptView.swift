@@ -14,6 +14,7 @@ struct ScriptView: View {
                         .padding(16)
                         .textSelection(.enabled)
                 }
+                .scrollIndicators(.visible)
             } else {
                 VStack(spacing: 12) {
                     Spacer()

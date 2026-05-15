@@ -32,6 +32,8 @@
 		A1000023 /* CompanionMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000024; };
 		A1000024 /* CompanionWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000025; };
 		A1000025 /* CompanionControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026; };
+		A1000026 /* FileTreeBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000027; };
+		A1000027 /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000028; };
 		B1000001 /* VTTParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
 		B1000002 /* BookmarkManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002; };
 		B1000003 /* EncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003; };
@@ -76,6 +78,8 @@
 		A2000024 /* CompanionMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionMessages.swift; sourceTree = "<group>"; };
 		A2000025 /* CompanionWebServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionWebServer.swift; sourceTree = "<group>"; };
 		A2000026 /* CompanionControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionControlView.swift; sourceTree = "<group>"; };
+		A2000027 /* FileTreeBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeBuilder.swift; sourceTree = "<group>"; };
+		A2000028 /* FileTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		B2000001 /* VTTParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTTParserTests.swift; sourceTree = "<group>"; };
 		B2000002 /* BookmarkManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkManagerTests.swift; sourceTree = "<group>"; };
 		B2000003 /* EncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncodingTests.swift; sourceTree = "<group>"; };
@@ -166,6 +170,7 @@
 				A2000017 /* BookmarkOverlay.swift */,
 				A2000018 /* ScriptView.swift */,
 				A2000026 /* CompanionControlView.swift */,
+				A2000028 /* FileTreeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -200,6 +205,7 @@
 				A2000010 /* FileScanner.swift */,
 				A2000014 /* ImageCache.swift */,
 				A2000019 /* FormatUtils.swift */,
+				A2000027 /* FileTreeBuilder.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -383,6 +389,8 @@
 				A1000023 /* CompanionMessages.swift in Sources */,
 				A1000024 /* CompanionWebServer.swift in Sources */,
 				A1000025 /* CompanionControlView.swift in Sources */,
+			A1000026 /* FileTreeBuilder.swift in Sources */,
+			A1000027 /* FileTreeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

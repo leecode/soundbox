@@ -49,9 +49,10 @@ struct ContentView: View {
                 UpdateBannerView()
 
                 HStack(spacing: 0) {
-                    PlaylistView()
+                    FileTreeView()
                         .frame(width: DesignTokens.Layout.sidebarWidth)
                         .background(.regularMaterial)
+                        .animation(nil, value: appState.showSubtitlePanel)
 
                     Divider()
 
@@ -63,6 +64,7 @@ struct ContentView: View {
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
+                .animation(.easeInOut, value: appState.showSubtitlePanel)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 PlayerControlBar(playerState: appState.playerState)
@@ -112,7 +114,9 @@ struct ContentView: View {
                 }
             }
         }
-        .animation(.easeInOut, value: appState.showSubtitlePanel)
+        .sheet(item: $appState.quickLookURL) { url in
+            QuickLookSheet(url: url)
+        }
         .task {
             if updateManager.autoCheckUpdates {
                 await updateManager.checkForUpdates()
@@ -124,12 +128,19 @@ struct ContentView: View {
 // MARK: - Side Panel (字幕 + 台本 + 书签 标签页)
 struct SidePanelView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedTab: SideTab = .subtitles
 
-    enum SideTab: String, CaseIterable {
-        case subtitles = "字幕"
-        case script = "台本"
-        case bookmarks = "书签"
+    enum SideTab: Int, CaseIterable {
+        case subtitles = 0
+        case script = 1
+        case bookmarks = 2
+
+        var label: String {
+            switch self {
+            case .subtitles: return "字幕"
+            case .script: return "台本"
+            case .bookmarks: return "书签"
+            }
+        }
 
         var iconName: String {
             switch self {
@@ -140,16 +151,20 @@ struct SidePanelView: View {
         }
     }
 
+    private var selectedTab: SideTab {
+        get { SideTab(rawValue: appState.sidePanelActiveTab) ?? .subtitles }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(SideTab.allCases, id: \.self) { tab in
-                    Button(action: { selectedTab = tab }) {
+                    Button(action: { appState.sidePanelActiveTab = tab.rawValue }) {
                         VStack(spacing: 6) {
                             HStack(spacing: 4) {
                                 Image(systemName: tab.iconName)
                                     .font(.caption)
-                                Text(tab.rawValue)
+                                Text(tab.label)
                                     .font(.subheadline)
                             }
                             .frame(maxWidth: .infinity)
@@ -163,7 +178,7 @@ struct SidePanelView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(tab.rawValue)
+                    .accessibilityLabel(tab.label)
                 }
             }
             .padding(.horizontal, 12)

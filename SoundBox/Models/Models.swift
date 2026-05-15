@@ -410,3 +410,134 @@ class PlaybackPositionManager {
         }
     }
 }
+
+// MARK: - File Tree
+
+enum FileTypeCategory {
+    case audio
+    case image
+    case text
+    case video
+    case unknown
+
+    var systemIconName: String {
+        switch self {
+        case .audio:   return "waveform"
+        case .image:   return "photo"
+        case .text:    return "doc.text"
+        case .video:   return "film"
+        case .unknown: return "doc"
+        }
+    }
+
+    static let audioExtensions = Set(LosslessDecoder.supportedExtensions)
+    static let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "webp"]
+    static let textExtensions: Set<String> = ["txt"]
+    static let videoExtensions: Set<String> = ["mp4", "mov", "avi", "mkv", "webm"]
+    static let skipExtensions: Set<String> = ["vtt", "ds_store"]
+
+    static func classify(_ url: URL) -> FileTypeCategory {
+        let ext = url.pathExtension.lowercased()
+        if audioExtensions.contains(ext) { return .audio }
+        if imageExtensions.contains(ext) { return .image }
+        if textExtensions.contains(ext) { return .text }
+        if videoExtensions.contains(ext) { return .video }
+        return .unknown
+    }
+}
+
+struct FileTypeCounts {
+    var audio: Int = 0
+    var image: Int = 0
+    var text: Int = 0
+    var video: Int = 0
+
+    static var zero: FileTypeCounts { FileTypeCounts() }
+
+    static func +(lhs: FileTypeCounts, rhs: FileTypeCounts) -> FileTypeCounts {
+        FileTypeCounts(
+            audio: lhs.audio + rhs.audio,
+            image: lhs.image + rhs.image,
+            text: lhs.text + rhs.text,
+            video: lhs.video + rhs.video
+        )
+    }
+
+    var total: Int { audio + image + text + video }
+}
+
+struct FileTreeFile: Identifiable {
+    let id: String
+    let name: String
+    let displayName: String
+    let url: URL
+    let category: FileTypeCategory
+    let trackIndex: Int?
+    let isHiRes: Bool
+    let duration: TimeInterval?
+
+    init(url: URL, category: FileTypeCategory, trackIndex: Int? = nil, isHiRes: Bool = false, duration: TimeInterval? = nil, relativePath: String) {
+        self.id = relativePath
+        self.url = url
+        self.category = category
+        self.trackIndex = trackIndex
+        self.isHiRes = isHiRes
+        self.duration = duration
+        self.name = url.lastPathComponent
+        self.displayName = category == .audio ? url.deletingPathExtension().lastPathComponent : url.lastPathComponent
+    }
+}
+
+struct FileTreeFolder: Identifiable {
+    let id: String
+    let name: String
+    let url: URL
+    var children: [FileTreeNode]
+    var isExpanded: Bool = false
+    var containsHiRes: Bool
+    var fileTypeCounts: FileTypeCounts
+}
+
+enum FileTreeNode: Identifiable {
+    case folder(FileTreeFolder)
+    case file(FileTreeFile)
+
+    var id: String {
+        switch self {
+        case .folder(let f): return f.id
+        case .file(let f):   return f.id
+        }
+    }
+}
+
+struct FileTreeRoot: Identifiable {
+    let id = UUID()
+    let url: URL
+    let name: String
+    var children: [FileTreeNode]
+    let urlToTrackIndex: [URL: Int]
+    let fileTypeCounts: FileTypeCounts
+
+    init(url: URL, children: [FileTreeNode], urlToTrackIndex: [URL: Int]) {
+        self.url = url
+        self.name = url.lastPathComponent
+        self.children = children
+        self.urlToTrackIndex = urlToTrackIndex
+        self.fileTypeCounts = children.reduce(FileTypeCounts.zero) { result, node in
+            switch node {
+            case .file(let f):
+                var counts = result
+                switch f.category {
+                case .audio: counts.audio += 1
+                case .image: counts.image += 1
+                case .text:  counts.text += 1
+                case .video: counts.video += 1
+                case .unknown: break
+                }
+                return counts
+            case .folder(let f):
+                return result + f.fileTypeCounts
+            }
+        }
+    }
+}

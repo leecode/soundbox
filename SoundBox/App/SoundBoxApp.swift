@@ -294,6 +294,9 @@ class AppState: ObservableObject {
     @Published var scriptContent: String?
     @Published var abRepeatRange: ABRepeatRange?
     @Published var pendingABRepeatStart: TimeInterval?
+    @Published var fileTreeRoots: [FileTreeRoot] = []
+    @Published var sidePanelActiveTab: Int = 0
+    @Published var quickLookURL: URL?
     var playlist: Playlist = Playlist()
     var subtitleManager = SubtitleManager()
     var subtitlePreviewManager = SubtitlePreviewManager()
@@ -375,6 +378,15 @@ class AppState: ObservableObject {
         restorePlaybackSpeedForCurrentTrack()
         if let track = playlist.currentTrack {
             AudioEngine.shared.loadAndPlay(track.audioFile.url)
+        }
+    }
+
+    func playFile(at url: URL) {
+        for root in fileTreeRoots {
+            if let index = root.urlToTrackIndex[url] {
+                playTrack(at: index)
+                return
+            }
         }
     }
 
@@ -670,14 +682,34 @@ class AppState: ObservableObject {
     }
 
     // MARK: - Folder Scanning
+    private let treeBuilder = FileTreeBuilder()
+    private var scanningURLs = Set<URL>()
+
     func scanAndAddFolder(_ url: URL) {
-        // 记录到历史
         folderHistoryManager.add(url)
+
+        guard !scanningURLs.contains(url),
+              !fileTreeRoots.contains(where: { $0.url == url }) else { return }
+
+        scanningURLs.insert(url)
 
         fileScanner.scanDirectory(url) { [weak self] tracks in
             DispatchQueue.main.async {
-                self?.playlist.addTracks(tracks)
-                self?.updateNowPlayingInfo()
+                guard let self = self else { return }
+                self.scanningURLs.remove(url)
+
+                guard !self.fileTreeRoots.contains(where: { $0.url == url }) else { return }
+
+                let baseIndex = self.playlist.tracks.count
+                let reindexed = tracks.enumerated().map { (i, t) in
+                    Track(audioFile: t.audioFile, index: baseIndex + i, title: t.title, artist: t.artist, album: t.album)
+                }
+                self.playlist.addTracks(reindexed)
+
+                let treeRoot = self.treeBuilder.buildTree(rootURL: url, tracks: reindexed)
+                self.fileTreeRoots.append(treeRoot)
+
+                self.updateNowPlayingInfo()
             }
         }
     }
