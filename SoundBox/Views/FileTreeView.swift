@@ -5,6 +5,43 @@ import Quartz
 struct FileTreeView: View {
     @EnvironmentObject var appState: AppState
     @State private var searchText = ""
+    @State private var expandedNodeIDs: Set<String> = []
+    @State private var loadedRootPaths: Set<String> = []
+
+    private var visibleRows: [FileTreeVisibleRow] {
+        let isMultiRoot = appState.fileTreeRoots.count > 1
+        var rows: [FileTreeVisibleRow] = []
+
+        for root in appState.fileTreeRoots {
+            if isMultiRoot {
+                let rootID = Self.rootRowID(for: root)
+                rows.append(.folder(
+                    id: rootID,
+                    title: root.name,
+                    depth: 0,
+                    containsHiRes: false,
+                    count: root.fileTypeCounts.total,
+                    isRoot: true
+                ))
+
+                if searchText.isEmpty {
+                    if expandedNodeIDs.contains(rootID) {
+                        appendVisibleRows(from: root.children, depth: 1, to: &rows)
+                    }
+                } else {
+                    appendSearchRows(from: root.children, depth: 1, to: &rows)
+                }
+            } else {
+                if searchText.isEmpty {
+                    appendVisibleRows(from: root.children, depth: 0, to: &rows)
+                } else {
+                    appendSearchRows(from: root.children, depth: 0, to: &rows)
+                }
+            }
+        }
+
+        return rows
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,16 +56,31 @@ struct FileTreeView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    let isMulti = appState.fileTreeRoots.count > 1
-                    ForEach(appState.fileTreeRoots) { root in
-                        FileTreeRootView(
-                            root: root,
-                            isMultiRoot: isMulti,
-                            searchText: searchText
-                        )
+                    ForEach(visibleRows) { row in
+                        switch row {
+                        case .folder(let id, let title, let depth, let containsHiRes, let count, let isRoot):
+                            FileTreeFolderDisclosureRow(
+                                title: title,
+                                depth: depth,
+                                isExpanded: bindingForFolder(id),
+                                containsHiRes: containsHiRes,
+                                count: count,
+                                isRoot: isRoot
+                            )
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+
+                        case .file(let file, let depth):
+                            FileTreeFileRowView(file: file, depth: depth)
+                                .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                        }
                     }
                 }
                 .listStyle(.plain)
+                .environment(\.defaultMinListRowHeight, 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(ScrollWheelRouterView())
             }
 
             Divider()
@@ -38,6 +90,12 @@ struct FileTreeView: View {
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)
             return true
+        }
+        .onAppear {
+            reconcileExpandedState()
+        }
+        .onChange(of: appState.fileTreeRoots.map(\.url)) { _, _ in
+            reconcileExpandedState(force: true)
         }
     }
 
@@ -174,6 +232,8 @@ struct FileTreeView: View {
     private func clearAll() {
         appState.fileTreeRoots = []
         appState.playlist.clear()
+        expandedNodeIDs = []
+        loadedRootPaths = []
     }
 
     private func handleDrop(providers: [NSItemProvider]) {
@@ -187,6 +247,132 @@ struct FileTreeView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func bindingForFolder(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: {
+                searchText.isEmpty ? expandedNodeIDs.contains(id) : true
+            },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedNodeIDs.insert(id)
+                } else {
+                    expandedNodeIDs.remove(id)
+                }
+            }
+        )
+    }
+
+    private func appendVisibleRows(from nodes: [FileTreeNode], depth: Int, to rows: inout [FileTreeVisibleRow]) {
+        for node in nodes {
+            switch node {
+            case .folder(let folder):
+                rows.append(.folder(
+                    id: folder.id,
+                    title: folder.name,
+                    depth: depth,
+                    containsHiRes: folder.containsHiRes,
+                    count: folder.fileTypeCounts.total,
+                    isRoot: false
+                ))
+
+                if expandedNodeIDs.contains(folder.id) {
+                    appendVisibleRows(from: folder.children, depth: depth + 1, to: &rows)
+                }
+
+            case .file(let file):
+                rows.append(.file(file, depth: depth))
+            }
+        }
+    }
+
+    private func appendSearchRows(from nodes: [FileTreeNode], depth: Int, to rows: inout [FileTreeVisibleRow]) {
+        for node in nodes {
+            switch node {
+            case .folder(let folder):
+                if folderMatchesSearch(folder) {
+                    rows.append(.folder(
+                        id: folder.id,
+                        title: folder.name,
+                        depth: depth,
+                        containsHiRes: folder.containsHiRes,
+                        count: folder.fileTypeCounts.total,
+                        isRoot: false
+                    ))
+                    appendSearchRows(from: folder.children, depth: depth + 1, to: &rows)
+                }
+
+            case .file(let file):
+                if file.displayName.localizedCaseInsensitiveContains(searchText) {
+                    rows.append(.file(file, depth: depth))
+                }
+            }
+        }
+    }
+
+    private func folderMatchesSearch(_ folder: FileTreeFolder) -> Bool {
+        folder.name.localizedCaseInsensitiveContains(searchText) ||
+        folder.children.contains { node in
+            switch node {
+            case .folder(let childFolder):
+                return folderMatchesSearch(childFolder)
+            case .file(let file):
+                return file.displayName.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+
+    private func reconcileExpandedState(force: Bool = false) {
+        let rootPaths = Set(appState.fileTreeRoots.map(\.url.path))
+        guard force || rootPaths != loadedRootPaths else { return }
+
+        loadedRootPaths = rootPaths
+
+        var nextExpandedIDs: Set<String> = []
+        let isMultiRoot = appState.fileTreeRoots.count > 1
+        for root in appState.fileTreeRoots {
+            if isMultiRoot {
+                nextExpandedIDs.insert(Self.rootRowID(for: root))
+            }
+            collectInitialExpandedIDs(from: root.children, into: &nextExpandedIDs)
+        }
+        expandedNodeIDs = nextExpandedIDs
+    }
+
+    private func collectInitialExpandedIDs(from nodes: [FileTreeNode], into expandedIDs: inout Set<String>) {
+        for node in nodes {
+            guard case .folder(let folder) = node else { continue }
+            if folder.isExpanded {
+                expandedIDs.insert(folder.id)
+            }
+            collectInitialExpandedIDs(from: folder.children, into: &expandedIDs)
+        }
+    }
+
+    private static func rootRowID(for root: FileTreeRoot) -> String {
+        "root:\(root.url.path)"
+    }
+}
+
+private enum FileTreeVisibleRow: Identifiable {
+    case folder(
+        id: String,
+        title: String,
+        depth: Int,
+        containsHiRes: Bool,
+        count: Int,
+        isRoot: Bool
+    )
+    case file(FileTreeFile, depth: Int)
+
+    var id: String {
+        switch self {
+        case .folder(let id, _, _, _, _, _):
+            return id
+        case .file(let file, _):
+            return file.id
         }
     }
 }
@@ -234,86 +420,32 @@ struct QuickLookPreviewItem: NSViewRepresentable {
     }
 }
 
-// MARK: - Root View
-struct FileTreeRootView: View {
-    let root: FileTreeRoot
-    let isMultiRoot: Bool
-    let searchText: String
-    @State private var isExpanded: Bool = true
-
-    var body: some View {
-        if isMultiRoot {
-            DisclosureGroup(isExpanded: $isExpanded) {
-                ForEach(root.children) { node in
-                    FileTreeNodeView(node: node, depth: 1, searchText: searchText)
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: isExpanded ? "folder.fill" : "folder")
-                        .foregroundStyle(.secondary)
-                    Text(root.name)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 12)
-        } else {
-            ForEach(root.children) { node in
-                FileTreeNodeView(node: node, depth: 0, searchText: searchText)
-            }
-        }
-    }
-}
-
-// MARK: - Node View (Recursive)
-struct FileTreeNodeView: View {
-    let node: FileTreeNode
+// MARK: - Folder Disclosure Row
+struct FileTreeFolderDisclosureRow: View {
+    let title: String
     let depth: Int
-    let searchText: String
-    @EnvironmentObject var appState: AppState
+    @Binding var isExpanded: Bool
+    let containsHiRes: Bool
+    let count: Int
+    var isRoot: Bool = false
+    @State private var isHovering = false
 
     var body: some View {
-        switch node {
-        case .folder(let folder):
-            FileTreeFolderView(folder: folder, depth: depth, searchText: searchText)
-        case .file(let file):
-            FileTreeFileRowView(file: file, depth: depth)
-        }
-    }
-}
-
-// MARK: - Folder View
-struct FileTreeFolderView: View {
-    let folder: FileTreeFolder
-    let depth: Int
-    let searchText: String
-    @State private var isExpanded: Bool
-
-    init(folder: FileTreeFolder, depth: Int, searchText: String) {
-        self.folder = folder
-        self.depth = depth
-        self.searchText = searchText
-        self._isExpanded = State(initialValue: folder.isExpanded)
-    }
-
-    var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            ForEach(filteredChildren) { child in
-                FileTreeNodeView(node: child, depth: depth + 1, searchText: searchText)
-            }
-        } label: {
+        Button(action: toggleExpanded) {
             HStack(spacing: 6) {
+                DisclosureChevron(isExpanded: isExpanded)
+
                 Image(systemName: isExpanded ? "folder.fill" : "folder")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(width: 16)
 
-                Text(folder.name)
+                Text(title)
                     .font(.subheadline)
+                    .fontWeight(isRoot ? .medium : .regular)
                     .lineLimit(1)
 
-                if folder.containsHiRes {
+                if containsHiRes {
                     Text("HI-RES")
                         .font(.caption2)
                         .fontWeight(.bold)
@@ -322,29 +454,35 @@ struct FileTreeFolderView: View {
                         .background(Color.accentColor.opacity(0.2), in: RoundedRectangle(cornerRadius: 4))
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                if folder.fileTypeCounts.total > 0 {
-                    Text("\(folder.fileTypeCounts.total)")
+                if count > 0 {
+                    Text("\(count)")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .monospacedDigit()
                 }
             }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+            .padding(.leading, CGFloat(depth) * 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
+                    .fill(isHovering ? Color.primary.opacity(0.06) : Color.clear)
+            )
+            .contentShape(Rectangle())
         }
-        .padding(.leading, CGFloat(depth) * 8)
+        .buttonStyle(.plain)
+        .padding(.horizontal, isRoot ? 12 : 0)
+        .onHover { isHovering = $0 }
+        .accessibilityLabel(title)
+        .accessibilityValue(isExpanded ? "已展开" : "已折叠")
     }
 
-    private var filteredChildren: [FileTreeNode] {
-        if searchText.isEmpty { return folder.children }
-        return folder.children.filter { nodeMatches($0, query: searchText) }
-    }
-
-    private func nodeMatches(_ node: FileTreeNode, query: String) -> Bool {
-        switch node {
-        case .file(let f):
-            return f.displayName.localizedCaseInsensitiveContains(query)
-        case .folder(let f):
-            return f.name.localizedCaseInsensitiveContains(query) || f.children.contains { nodeMatches($0, query: query) }
+    private func toggleExpanded() {
+        withAnimation(.easeInOut(duration: 0.14)) {
+            isExpanded.toggle()
         }
     }
 }
@@ -386,6 +524,7 @@ struct FileTreeFileRowView: View {
             }
             .padding(.vertical, 4)
             .padding(.horizontal, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                     .fill(
@@ -434,10 +573,7 @@ struct FileTreeFileRowView: View {
             appState.quickLookURL = file.url
         case .text:
             appState.loadScript(from: file.url)
-            appState.sidePanelActiveTab = 1
-            if !appState.showSubtitlePanel {
-                appState.showSubtitlePanel = true
-            }
+            appState.openSidePanel(.script)
         case .unknown:
             break
         }

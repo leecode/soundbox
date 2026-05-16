@@ -174,9 +174,7 @@ struct SoundBoxApp: App {
                 Divider()
 
                 Button("字幕预览") {
-                    withAnimation {
-                        appState.showSubtitlePanel.toggle()
-                    }
+                    appState.toggleSidePanel(.subtitles)
                 }
                 .keyboardShortcut("s", modifiers: .command)
 
@@ -297,6 +295,33 @@ class AppState: ObservableObject {
     @Published var fileTreeRoots: [FileTreeRoot] = []
     @Published var sidePanelActiveTab: Int = 0
     @Published var quickLookURL: URL?
+
+    var activeSidePanelTab: SidePanelTab {
+        get { SidePanelTab(rawValue: sidePanelActiveTab) ?? .subtitles }
+        set { sidePanelActiveTab = newValue.rawValue }
+    }
+
+    func openSidePanel(_ tab: SidePanelTab) {
+        activeSidePanelTab = tab
+        showSubtitlePanel = true
+    }
+
+    func closeSidePanel() {
+        showSubtitlePanel = false
+    }
+
+    func toggleSidePanel(_ tab: SidePanelTab) {
+        if showSubtitlePanel && activeSidePanelTab == tab {
+            closeSidePanel()
+        } else {
+            openSidePanel(tab)
+        }
+    }
+
+    func isSidePanelShowing(_ tab: SidePanelTab) -> Bool {
+        showSubtitlePanel && activeSidePanelTab == tab
+    }
+
     var playlist: Playlist = Playlist()
     var subtitleManager = SubtitleManager()
     var subtitlePreviewManager = SubtitlePreviewManager()

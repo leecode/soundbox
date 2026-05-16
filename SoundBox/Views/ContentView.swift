@@ -52,7 +52,6 @@ struct ContentView: View {
                     FileTreeView()
                         .frame(width: DesignTokens.Layout.sidebarWidth)
                         .background(.regularMaterial)
-                        .animation(nil, value: appState.showSubtitlePanel)
 
                     Divider()
 
@@ -61,10 +60,8 @@ struct ContentView: View {
                     if appState.showSubtitlePanel {
                         Divider()
                         SidePanelView()
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
-                .animation(.easeInOut, value: appState.showSubtitlePanel)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 PlayerControlBar(playerState: appState.playerState)
@@ -129,37 +126,15 @@ struct ContentView: View {
 struct SidePanelView: View {
     @EnvironmentObject var appState: AppState
 
-    enum SideTab: Int, CaseIterable {
-        case subtitles = 0
-        case script = 1
-        case bookmarks = 2
-
-        var label: String {
-            switch self {
-            case .subtitles: return "字幕"
-            case .script: return "台本"
-            case .bookmarks: return "书签"
-            }
-        }
-
-        var iconName: String {
-            switch self {
-            case .subtitles: return "text.bubble"
-            case .script: return "doc.text"
-            case .bookmarks: return "bookmark"
-            }
-        }
-    }
-
-    private var selectedTab: SideTab {
-        get { SideTab(rawValue: appState.sidePanelActiveTab) ?? .subtitles }
+    private var selectedTab: SidePanelTab {
+        appState.activeSidePanelTab
     }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                ForEach(SideTab.allCases, id: \.self) { tab in
-                    Button(action: { appState.sidePanelActiveTab = tab.rawValue }) {
+                ForEach(SidePanelTab.allCases) { tab in
+                    Button(action: { appState.activeSidePanelTab = tab }) {
                         VStack(spacing: 6) {
                             HStack(spacing: 4) {
                                 Image(systemName: tab.iconName)
@@ -192,7 +167,7 @@ struct SidePanelView: View {
                     subtitlePreviewManager: appState.subtitlePreviewManager,
                     currentTrackIndex: appState.playlist.currentIndex,
                     currentTime: appState.playbackProgress.currentTime,
-                    onClose: { appState.showSubtitlePanel = false },
+                    onClose: appState.closeSidePanel,
                     onSelectSubtitle: { appState.playFromSubtitle($0) }
                 )
             case .script:

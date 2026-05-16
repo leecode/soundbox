@@ -144,30 +144,40 @@ struct SubtitlePreviewPanel: View {
                 .padding()
             } else {
                 ScrollViewReader { proxy in
-                    List {
-                        ForEach(filteredSections) { section in
-                            DisclosureGroup(
-                                isExpanded: bindingForSection(section.trackIndex)
-                            ) {
-                                ForEach(section.items) { item in
-                                    SubtitleItemRow(item: item, isActive: isItemActive(item))
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            onSelectSubtitle(item)
-                                        }
-                                        .id(item.id)
+                    ScrollView(.vertical) {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(filteredSections) { section in
+                                Button(action: { toggleSection(section.trackIndex) }) {
+                                    SubtitleTrackSectionHeader(
+                                        title: section.trackTitle,
+                                        count: section.items.count,
+                                        isCurrent: section.trackIndex == currentTrackIndex,
+                                        isExpanded: isSectionExpanded(section.trackIndex)
+                                    )
                                 }
-                            } label: {
-                                SubtitleTrackSectionHeader(
-                                    title: section.trackTitle,
-                                    count: section.items.count,
-                                    isCurrent: section.trackIndex == currentTrackIndex
-                                )
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .id(section.id)
+
+                                if isSectionExpanded(section.trackIndex) {
+                                    ForEach(section.items) { item in
+                                        SubtitleItemRow(item: item, isActive: isItemActive(item))
+                                            .contentShape(Rectangle())
+                                            .onTapGesture {
+                                                onSelectSubtitle(item)
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 1)
+                                            .id(item.id)
+                                    }
+                                }
                             }
-                            .id(section.id)
                         }
+                        .padding(.vertical, 4)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
-                    .listStyle(.plain)
+                    .scrollIndicators(.visible)
                     .onAppear {
                         prepareActiveSubtitle(proxy: proxy)
                     }
@@ -198,18 +208,19 @@ struct SubtitlePreviewPanel: View {
         return subtitlePreviewManager.activeItemId == item.id
     }
 
-    private func bindingForSection(_ trackIndex: Int) -> Binding<Bool> {
-        Binding(
-            get: { expandedTrackIndices.contains(trackIndex) },
-            set: { isExpanded in
-                isFollowingPlayback = false
-                if isExpanded {
-                    expandedTrackIndices.insert(trackIndex)
-                } else {
-                    expandedTrackIndices.remove(trackIndex)
-                }
+    private func isSectionExpanded(_ trackIndex: Int) -> Bool {
+        expandedTrackIndices.contains(trackIndex)
+    }
+
+    private func toggleSection(_ trackIndex: Int) {
+        isFollowingPlayback = false
+        withAnimation(.easeInOut(duration: 0.14)) {
+            if expandedTrackIndices.contains(trackIndex) {
+                expandedTrackIndices.remove(trackIndex)
+            } else {
+                expandedTrackIndices.insert(trackIndex)
             }
-        )
+        }
     }
 
     private func toggleFollowPlayback() {
@@ -279,9 +290,12 @@ private struct SubtitleTrackSectionHeader: View {
     let title: String
     let count: Int
     let isCurrent: Bool
+    let isExpanded: Bool
 
     var body: some View {
         HStack(spacing: 6) {
+            DisclosureChevron(isExpanded: isExpanded)
+
             Image(systemName: isCurrent ? "play.circle.fill" : "music.note")
                 .font(.caption2)
                 .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
@@ -300,9 +314,13 @@ private struct SubtitleTrackSectionHeader: View {
                 .monospacedDigit()
         }
         .textCase(nil)
-        .padding(.vertical, 6)
+        .padding(.vertical, 5)
         .padding(.horizontal, 8)
-        .background(.regularMaterial)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isCurrent ? Color.accentColor.opacity(0.10) : Color.clear)
+        )
+        .contentShape(Rectangle())
     }
 }
 

@@ -184,13 +184,11 @@ struct PlayerControlBar: View {
             }
 
             Button(action: {
-                withAnimation {
-                    appState.showSubtitlePanel.toggle()
-                }
+                appState.toggleSidePanel(.subtitles)
             }) {
                 Image(systemName: "text.bubble")
                     .font(.caption)
-                    .foregroundStyle(appState.showSubtitlePanel ? Color.accentColor : .secondary)
+                    .foregroundStyle(appState.isSidePanelShowing(.subtitles) ? Color.accentColor : .secondary)
             }
             .buttonStyle(.plain)
             .frame(width: 24, height: 24)
