@@ -84,6 +84,21 @@ class FileScanner {
         }
     }
 
+    func scanFile(_ url: URL, completion: @escaping (Track?) -> Void) {
+        guard isAudioFile(url) else {
+            DispatchQueue.main.async { completion(nil) }
+            return
+        }
+
+        let subtitleURL = findSubtitleFile(for: url)
+        let scriptURL = findScriptFile(for: url)
+        createTrack(from: url, subtitleURL: subtitleURL, artworkURL: nil, scriptURL: scriptURL, index: 0) { track in
+            DispatchQueue.main.async {
+                completion(track)
+            }
+        }
+    }
+
     // MARK: - Find Artwork File
     private func findArtworkFile(in directory: URL) -> URL? {
         let imageExtensions = Set(["jpg", "jpeg", "png", "webp"])

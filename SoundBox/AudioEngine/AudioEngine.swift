@@ -183,9 +183,11 @@ class AudioEngine {
     private func startProgressTimer() {
         stopProgressTimer()
         // 降低更新频率到 0.25 秒，减少 CPU 占用
-        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.updateProgress()
         }
+        progressTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func stopProgressTimer() {
@@ -204,9 +206,15 @@ class AudioEngine {
             currentTime = playStartTime
         }
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
+        let notify = { [weak self] in
+            guard let self else { return }
             self.delegate?.audioEngine(self, didUpdateProgress: currentTime, duration: self.totalDuration)
+        }
+
+        if Thread.isMainThread {
+            notify()
+        } else {
+            DispatchQueue.main.async(execute: notify)
         }
     }
 }

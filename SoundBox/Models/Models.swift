@@ -182,6 +182,16 @@ class PlayerState: ObservableObject {
         guard totalDuration > 0 else { return 0 }
         return currentTime / totalDuration
     }
+
+    func updateProgress(currentTime: TimeInterval, totalDuration: TimeInterval, minimumTimeDelta: TimeInterval = 0, force: Bool = false) {
+        if force || abs(self.currentTime - currentTime) >= minimumTimeDelta {
+            self.currentTime = currentTime
+        }
+
+        if self.totalDuration != totalDuration {
+            self.totalDuration = totalDuration
+        }
+    }
 }
 
 // MARK: - A-B Repeat

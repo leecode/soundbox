@@ -40,6 +40,9 @@ struct SoundBoxApp: App {
                 .onAppear {
                     applyAppAppearance(theme: selectedTheme)
                     floatingPanelManager.configure(appState: appState)
+                    #if DEBUG
+                    appState.runDebugAutoplayIfRequested()
+                    #endif
                 }
                 .onChange(of: appThemeRawValue) { _, newValue in
                     let theme = AppTheme(rawValue: newValue) ?? .system
@@ -274,6 +277,14 @@ class PlaybackProgress: ObservableObject {
         guard totalDuration > 0 else { return 0 }
         return currentTime / totalDuration
     }
+
+    func update(currentTime: TimeInterval, totalDuration: TimeInterval) {
+        self.currentTime = currentTime
+
+        if self.totalDuration != totalDuration {
+            self.totalDuration = totalDuration
+        }
+    }
 }
 
 final class SleepTimerState: ObservableObject {
@@ -304,6 +315,10 @@ class AppState: ObservableObject {
     func openSidePanel(_ tab: SidePanelTab) {
         activeSidePanelTab = tab
         showSubtitlePanel = true
+
+        if tab == .subtitles {
+            subtitlePreviewManager.refreshActiveItem(for: playbackProgress.currentTime, currentTrackIndex: playlist.currentIndex)
+        }
     }
 
     func closeSidePanel() {
@@ -337,6 +352,10 @@ class AppState: ObservableObject {
     private var savedVolumeBeforeFade: Float = 1.0
     private var isSleepFading = false
     private var lastABRepeatSeekTime: TimeInterval = 0
+    private let playerProgressPublishInterval: TimeInterval = 0.5
+    #if DEBUG
+    private var didRunDebugAutoplay = false
+    #endif
 
     private let fileScanner = FileScanner()
 
@@ -455,7 +474,14 @@ class AppState: ObservableObject {
 
     func seekTo(_ time: TimeInterval) {
         cancelSleepFade(restoreVolume: true)
-        AudioEngine.shared.seek(to: time)
+        let clampedTime = clampedPlaybackTime(time)
+        AudioEngine.shared.seek(to: clampedTime)
+        playbackProgress.update(currentTime: clampedTime, totalDuration: playbackProgress.totalDuration)
+        playerState.updateProgress(currentTime: clampedTime, totalDuration: playerState.totalDuration, force: true)
+
+        if shouldUpdateSubtitlePreviewDuringPlayback {
+            subtitlePreviewManager.refreshActiveItem(for: clampedTime, currentTrackIndex: playlist.currentIndex)
+        }
     }
 
     func setPlaybackSpeed(_ speed: Float) {
@@ -658,9 +684,11 @@ class AppState: ObservableObject {
 
         lastABRepeatSeekTime = now
         AudioEngine.shared.seek(to: range.startTime)
-        playbackProgress.currentTime = range.startTime
-        playerState.currentTime = range.startTime
-        subtitlePreviewManager.updateActiveItem(for: range.startTime, currentTrackIndex: playlist.currentIndex)
+        playbackProgress.update(currentTime: range.startTime, totalDuration: playbackProgress.totalDuration)
+        playerState.updateProgress(currentTime: range.startTime, totalDuration: playerState.totalDuration, force: true)
+        if shouldUpdateSubtitlePreviewDuringPlayback {
+            subtitlePreviewManager.updateActiveItem(for: range.startTime, currentTrackIndex: playlist.currentIndex)
+        }
 
         if !subtitleManager.cues.isEmpty {
             subtitleManager.update(for: range.startTime)
@@ -668,6 +696,10 @@ class AppState: ObservableObject {
         }
 
         return true
+    }
+
+    private var shouldUpdateSubtitlePreviewDuringPlayback: Bool {
+        showSubtitlePanel && activeSidePanelTab == .subtitles && !subtitlePreviewManager.items.isEmpty
     }
 
     private func startSmoothFade(duration: TimeInterval) {
@@ -744,6 +776,52 @@ class AppState: ObservableObject {
             scanAndAddFolder(url)
         }
     }
+
+    #if DEBUG
+    func runDebugAutoplayIfRequested() {
+        guard !didRunDebugAutoplay else { return }
+
+        if let filePath = debugArgumentValue(for: "--autoplay-file") {
+            didRunDebugAutoplay = true
+            scanAndPlayDebugFile(URL(fileURLWithPath: filePath))
+        } else if let folderPath = debugArgumentValue(for: "--autoplay-folder") {
+            didRunDebugAutoplay = true
+            scanAndAddFolder(URL(fileURLWithPath: folderPath, isDirectory: true))
+            playFirstTrackWhenReady()
+        }
+    }
+
+    private func debugArgumentValue(for name: String) -> String? {
+        let arguments = CommandLine.arguments
+        guard let index = arguments.firstIndex(of: name),
+              arguments.indices.contains(index + 1) else {
+            return nil
+        }
+        return arguments[index + 1]
+    }
+
+    private func playFirstTrackWhenReady(attempt: Int = 0) {
+        if !playlist.tracks.isEmpty {
+            playTrack(at: 0)
+            return
+        }
+
+        guard attempt < 30 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.playFirstTrackWhenReady(attempt: attempt + 1)
+        }
+    }
+
+    private func scanAndPlayDebugFile(_ url: URL) {
+        fileScanner.scanFile(url) { [weak self] track in
+            guard let self, let track else { return }
+
+            self.playlist.clear()
+            self.playlist.addTrack(track)
+            self.playTrack(at: 0)
+        }
+    }
+    #endif
 
     // MARK: - Companion Web
     func startCompanionServer() {
@@ -894,7 +972,7 @@ class AppState: ObservableObject {
 // MARK: - Audio Engine Delegate
 extension AppState: AudioEngineDelegate {
     func audioEngine(_ engine: AudioEngine, didChangeState state: PlaybackState) {
-        DispatchQueue.main.async {
+        performOnMain {
             self.playerState.playbackState = state
             self.updateNowPlayingInfo()
 
@@ -921,8 +999,8 @@ extension AppState: AudioEngineDelegate {
 
             // 开始播放时加载字幕并重置进度
             if state == .playing, let track = self.playlist.currentTrack {
-                self.playbackProgress.currentTime = 0
-                self.playerState.currentTime = 0
+                self.playbackProgress.update(currentTime: 0, totalDuration: self.playbackProgress.totalDuration)
+                self.playerState.updateProgress(currentTime: 0, totalDuration: self.playerState.totalDuration, force: true)
 
                 // App 启动后恢复上次的播放位置（仅一次）
                 if let savedPosition = self.playbackPositionManager.restorePositionIfNeeded(for: track.audioFile.url) {
@@ -974,11 +1052,13 @@ extension AppState: AudioEngineDelegate {
     }
 
     func audioEngine(_ engine: AudioEngine, didUpdateProgress progress: TimeInterval, duration: TimeInterval) {
-        DispatchQueue.main.async {
-            self.playbackProgress.currentTime = progress
-            self.playbackProgress.totalDuration = duration
-            self.playerState.currentTime = progress
-            self.playerState.totalDuration = duration
+        performOnMain {
+            self.playbackProgress.update(currentTime: progress, totalDuration: duration)
+            self.playerState.updateProgress(
+                currentTime: progress,
+                totalDuration: duration,
+                minimumTimeDelta: self.playerProgressPublishInterval
+            )
 
             // 节流保存播放进度（每5秒）
             let now = Date().timeIntervalSince1970
@@ -993,8 +1073,10 @@ extension AppState: AudioEngineDelegate {
                 }
             }
 
-            // 更新字幕列表高亮（始终高亮离当前时间最近的字幕）
-            self.subtitlePreviewManager.updateActiveItem(for: progress, currentTrackIndex: self.playlist.currentIndex)
+            // 更新字幕列表高亮只在面板可见时进行，避免隐藏面板仍触发整棵 SwiftUI 树刷新。
+            if self.shouldUpdateSubtitlePreviewDuringPlayback {
+                self.subtitlePreviewManager.updateActiveItem(for: progress, currentTrackIndex: self.playlist.currentIndex)
+            }
 
             if self.handleABRepeatIfNeeded(progress: progress) {
                 return
@@ -1018,8 +1100,16 @@ extension AppState: AudioEngineDelegate {
     }
 
     func audioEngine(_ engine: AudioEngine, didEncounterError error: Error) {
-        DispatchQueue.main.async {
+        performOnMain {
             self.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func performOnMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
         }
     }
 }

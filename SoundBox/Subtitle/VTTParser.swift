@@ -183,8 +183,8 @@ class SubtitlePreviewManager: ObservableObject {
 
     private var loadedTrackIds: Set<String> = []
 
-    // 索引优化：按 trackIndex 分组的字幕索引
-    private var trackIndexMap: [Int: [Int]] = [:]  // trackIndex -> items中的索引数组
+    // 索引优化：按 trackIndex 分组并按字幕中心时间排序，用于快速找最近字幕。
+    private var trackCueCenterMap: [Int: [(center: TimeInterval, itemIndex: Int)]] = [:]
     private var lastUpdateTime: TimeInterval = 0
     private var updateThrottle: TimeInterval = 0.5  // 每0.5秒最多更新一次
 
@@ -192,13 +192,13 @@ class SubtitlePreviewManager: ObservableObject {
         // Reset and reload all
         items.removeAll()
         loadedTrackIds.removeAll()
-        trackIndexMap.removeAll()
+        trackCueCenterMap.removeAll()
 
         isLoading = true
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var newItems: [SubtitlePreviewItem] = []
-            var newTrackIndexMap: [Int: [Int]] = [:]
+            var newTrackCueCenterMap: [Int: [(center: TimeInterval, itemIndex: Int)]] = [:]
 
             for (index, track) in tracks.enumerated() {
                 guard let subtitleURL = track.audioFile.subtitleURL else { continue }
@@ -206,20 +206,24 @@ class SubtitlePreviewManager: ObservableObject {
                 let cues = VTTParser.parse(from: subtitleURL)
 
                 for cue in cues {
+                    let itemIndex = newItems.count
                     let item = SubtitlePreviewItem(
                         id: "\(index)-\(cue.id)",
                         trackIndex: index,
                         trackTitle: track.title,
                         cue: cue
                     )
-                    newTrackIndexMap[index, default: []].append(newItems.count)
+                    newTrackCueCenterMap[index, default: []].append((
+                        center: (cue.startTime + cue.endTime) / 2,
+                        itemIndex: itemIndex
+                    ))
                     newItems.append(item)
                 }
             }
 
             DispatchQueue.main.async {
                 self?.items = newItems
-                self?.trackIndexMap = newTrackIndexMap
+                self?.trackCueCenterMap = newTrackCueCenterMap
                 self?.isLoading = false
             }
         }
@@ -241,30 +245,24 @@ class SubtitlePreviewManager: ObservableObject {
     }
 
     private func setActiveItem(for currentTime: TimeInterval, currentTrackIndex: Int) {
-        guard let indices = trackIndexMap[currentTrackIndex], !indices.isEmpty else {
+        guard let centers = trackCueCenterMap[currentTrackIndex], !centers.isEmpty else {
             if activeItemId != nil {
                 activeItemId = nil
             }
             return
         }
 
-        // 使用索引优化，只遍历当前曲目的字幕
-        var closestItem: SubtitlePreviewItem?
-        var closestDistance: TimeInterval = .infinity
+        let insertionIndex = centers.lowerBound { $0.center < currentTime }
+        let candidateIndices = [
+            insertionIndex,
+            insertionIndex - 1
+        ].filter { centers.indices.contains($0) }
 
-        for index in indices {
-            let item = items[index]
-            // 计算到字幕中心的距离
-            let cueCenter = (item.cue.startTime + item.cue.endTime) / 2
-            let distance = abs(cueCenter - currentTime)
-
-            if distance < closestDistance {
-                closestDistance = distance
-                closestItem = item
-            }
+        let closest = candidateIndices.min {
+            abs(centers[$0].center - currentTime) < abs(centers[$1].center - currentTime)
         }
 
-        let newActiveId = closestItem?.id
+        let newActiveId = closest.map { items[centers[$0].itemIndex].id }
         if newActiveId != activeItemId {
             activeItemId = newActiveId
         }
@@ -273,8 +271,28 @@ class SubtitlePreviewManager: ObservableObject {
     func clear() {
         items.removeAll()
         loadedTrackIds.removeAll()
-        trackIndexMap.removeAll()
+        trackCueCenterMap.removeAll()
         activeItemId = nil
         lastUpdateTime = 0
+    }
+}
+
+private extension Array {
+    func lowerBound(where predicate: (Element) -> Bool) -> Index {
+        var low = startIndex
+        var high = endIndex
+
+        while low < high {
+            let distance = self.distance(from: low, to: high)
+            let mid = index(low, offsetBy: distance / 2)
+
+            if predicate(self[mid]) {
+                low = index(after: mid)
+            } else {
+                high = mid
+            }
+        }
+
+        return low
     }
 }

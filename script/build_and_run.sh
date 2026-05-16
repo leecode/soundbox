@@ -2,6 +2,10 @@
 set -euo pipefail
 
 MODE="${1:-run}"
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+APP_ARGS=("$@")
 APP_NAME="SoundBox"
 BUNDLE_ID="com.soundbox.app"
 PROJECT_NAME="SoundBox.xcodeproj"
@@ -14,7 +18,7 @@ APP_BUNDLE="$DERIVED_DATA/Build/Products/$CONFIGURATION/$APP_NAME.app"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 usage() {
-  echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+  echo "usage: $0 [run|--debug|--logs|--telemetry|--verify] [app args...]" >&2
 }
 
 build_app() {
@@ -31,7 +35,7 @@ stop_app() {
 }
 
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE"
+  /usr/bin/open -n "$APP_BUNDLE" --args "${APP_ARGS[@]}"
 }
 
 stop_app
