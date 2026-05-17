@@ -441,7 +441,7 @@ enum FileTypeCategory {
     }
 
     static let audioExtensions = Set(LosslessDecoder.supportedExtensions)
-    static let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "webp"]
+    static let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "tif", "tiff", "bmp"]
     static let textExtensions: Set<String> = ["txt"]
     static let videoExtensions: Set<String> = ["mp4", "mov", "avi", "mkv", "webm"]
     static let skipExtensions: Set<String> = ["vtt", "ds_store"]

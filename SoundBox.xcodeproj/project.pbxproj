@@ -37,6 +37,7 @@
 		A1000028 /* SidePanelTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000029; };
 		A1000030 /* DisclosureChevron.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000031; };
 		A1000031 /* ScrollWheelRouterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000032; };
+		A1000032 /* ImageViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000033; };
 		B1000001 /* VTTParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001; };
 		B1000002 /* BookmarkManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002; };
 		B1000003 /* EncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003; };
@@ -86,6 +87,7 @@
 		A2000029 /* SidePanelTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidePanelTab.swift; sourceTree = "<group>"; };
 		A2000031 /* DisclosureChevron.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisclosureChevron.swift; sourceTree = "<group>"; };
 		A2000032 /* ScrollWheelRouterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollWheelRouterView.swift; sourceTree = "<group>"; };
+		A2000033 /* ImageViewerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewerSheet.swift; sourceTree = "<group>"; };
 		B2000001 /* VTTParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTTParserTests.swift; sourceTree = "<group>"; };
 		B2000002 /* BookmarkManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkManagerTests.swift; sourceTree = "<group>"; };
 		B2000003 /* EncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncodingTests.swift; sourceTree = "<group>"; };
@@ -178,6 +180,7 @@
 				A2000018 /* ScriptView.swift */,
 				A2000026 /* CompanionControlView.swift */,
 				A2000028 /* FileTreeView.swift */,
+				A2000033 /* ImageViewerSheet.swift */,
 				A2000031 /* DisclosureChevron.swift */,
 				A2000032 /* ScrollWheelRouterView.swift */,
 			);
@@ -403,6 +406,7 @@
 				A1000028 /* SidePanelTab.swift in Sources */,
 				A1000030 /* DisclosureChevron.swift in Sources */,
 				A1000031 /* ScrollWheelRouterView.swift in Sources */,
+				A1000032 /* ImageViewerSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

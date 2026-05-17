@@ -112,7 +112,11 @@ struct ContentView: View {
             }
         }
         .sheet(item: $appState.quickLookURL) { url in
-            QuickLookSheet(url: url)
+            if FileTypeCategory.classify(url) == .image {
+                ImageViewerSheet(url: url)
+            } else {
+                QuickLookSheet(url: url)
+            }
         }
         .task {
             if updateManager.autoCheckUpdates {

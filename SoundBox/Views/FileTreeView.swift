@@ -1,5 +1,6 @@
 import SwiftUI
 import Quartz
+import AppKit
 
 // MARK: - File Tree View
 struct FileTreeView: View {
@@ -496,11 +497,8 @@ struct FileTreeFileRowView: View {
 
     var body: some View {
         Button(action: { handleTap() }) {
-            HStack(spacing: 6) {
-                Image(systemName: iconSystemName)
-                    .font(.subheadline)
-                    .foregroundStyle(iconColor)
-                    .frame(width: 16)
+            HStack(spacing: file.category == .image ? 8 : 6) {
+                leadingIcon
 
                 Text(file.displayName)
                     .font(.subheadline)
@@ -520,6 +518,10 @@ struct FileTreeFileRowView: View {
                             .foregroundStyle(.tertiary)
                             .monospacedDigit()
                     }
+                } else if file.category == .image, isHovering {
+                    Image(systemName: "magnifyingglass")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
             }
             .padding(.vertical, 4)
@@ -544,6 +546,18 @@ struct FileTreeFileRowView: View {
         .buttonStyle(.plain)
         .padding(.leading, CGFloat(depth) * 8 + 16)
         .onHover { isHovering = $0 }
+        .contextMenu {
+            if file.category == .image {
+                Button("查看图片") {
+                    appState.quickLookURL = file.url
+                }
+
+                Button("在访达中显示") {
+                    NSWorkspace.shared.activateFileViewerSelecting([file.url])
+                }
+            }
+        }
+        .help(file.category == .image ? "打开图片查看器" : "")
     }
 
     private var isCurrentTrack: Bool {
@@ -563,6 +577,19 @@ struct FileTreeFileRowView: View {
         return .secondary
     }
 
+    @ViewBuilder
+    private var leadingIcon: some View {
+        if file.category == .image {
+            ImageFileThumbnailView(url: file.url)
+                .frame(width: 22, height: 22)
+        } else {
+            Image(systemName: iconSystemName)
+                .font(.subheadline)
+                .foregroundStyle(iconColor)
+                .frame(width: 16)
+        }
+    }
+
     private func handleTap() {
         switch file.category {
         case .audio:
@@ -576,6 +603,43 @@ struct FileTreeFileRowView: View {
             appState.openSidePanel(.script)
         case .unknown:
             break
+        }
+    }
+}
+
+private struct ImageFileThumbnailView: View {
+    let url: URL
+    @State private var image: NSImage?
+
+    var body: some View {
+        ZStack {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(.regularMaterial)
+                    .overlay {
+                        Image(systemName: "photo")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .overlay {
+            RoundedRectangle(cornerRadius: 5)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+        }
+        .onAppear(perform: loadImage)
+        .onChange(of: url) { _, _ in loadImage() }
+    }
+
+    private func loadImage() {
+        image = nil
+        ImageCache.shared.loadImage(from: url) { loadedImage in
+            image = loadedImage
         }
     }
 }
