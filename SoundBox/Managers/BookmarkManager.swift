@@ -10,6 +10,7 @@ class BookmarkManager: ObservableObject {
 
     private let maxBookmarks = 500
     private let currentSchemaVersion = 1
+    private var bookmarksByAudioURL: [URL: [Bookmark]] = [:]
 
     private let storageDirectory: URL
     private let bookmarksFile: URL
@@ -31,23 +32,25 @@ class BookmarkManager: ObservableObject {
         let bookmark = Bookmark(audioFileURL: audioFileURL, timestamp: timestamp, label: label)
         bookmarks.append(bookmark)
         trimIfNeeded()
+        rebuildBookmarkIndex()
         save()
     }
 
     func removeBookmark(_ bookmark: Bookmark) {
         bookmarks.removeAll { $0.id == bookmark.id }
+        rebuildBookmarkIndex()
         save()
     }
 
     func removeBookmark(at offsets: IndexSet) {
         bookmarks.remove(atOffsets: offsets)
+        rebuildBookmarkIndex()
         save()
     }
 
     /// All bookmarks for a specific audio file
     func bookmarks(for url: URL) -> [Bookmark] {
-        bookmarks.filter { $0.audioFileURL == url }
-            .sorted { $0.timestamp < $1.timestamp }
+        bookmarksByAudioURL[url] ?? []
     }
 
     // MARK: - Persistence
@@ -81,9 +84,15 @@ class BookmarkManager: ObservableObject {
         do {
             let data = try Data(contentsOf: bookmarksFile)
             bookmarks = try JSONDecoder().decode([Bookmark].self, from: data)
+            rebuildBookmarkIndex()
         } catch {
             Self.logger.error("Failed to load bookmarks: \(error.localizedDescription)")
         }
+    }
+
+    private func rebuildBookmarkIndex() {
+        bookmarksByAudioURL = Dictionary(grouping: bookmarks, by: \.audioFileURL)
+            .mapValues { $0.sorted { $0.timestamp < $1.timestamp } }
     }
 
     private func save() {

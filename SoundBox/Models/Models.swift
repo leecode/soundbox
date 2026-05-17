@@ -336,6 +336,9 @@ class PlaybackPositionManager {
     private var positions: [String: PlaybackPosition] = [:]
     private let maxPositions = 200
     private let userDefaultsKey = "playbackPositions"
+    private let persistenceQueue = DispatchQueue(label: "com.soundbox.playback-position.persistence", qos: .utility)
+    private var pendingSaveWorkItem: DispatchWorkItem?
+    private var lastMarkedPlayingURL: URL?
     private static let lastPlayingURLKey = "lastPlayingTrackURL"
     private static let logger = Logger(subsystem: "com.soundbox", category: "PlaybackPosition")
 
@@ -345,9 +348,10 @@ class PlaybackPositionManager {
     init() {
         load()
         restoreURL = UserDefaults.standard.url(forKey: Self.lastPlayingURLKey)
+        lastMarkedPlayingURL = restoreURL
     }
 
-    func savePosition(for url: URL, position: TimeInterval, duration: TimeInterval) {
+    func savePosition(for url: URL, position: TimeInterval, duration: TimeInterval, persistImmediately: Bool = false) {
         // Near end of track: treat as finished, remove position
         if duration > 5 && (duration - position) < 5.0 {
             removePosition(for: url)
@@ -370,7 +374,7 @@ class PlaybackPositionManager {
             }
         }
 
-        save()
+        save(persistImmediately: persistImmediately)
         markLastPlaying(url)
     }
 
@@ -391,14 +395,41 @@ class PlaybackPositionManager {
 
     func removePosition(for url: URL) {
         positions.removeValue(forKey: url.absoluteString)
-        save()
+        save(persistImmediately: true)
     }
 
     func markLastPlaying(_ url: URL) {
-        UserDefaults.standard.set(url, forKey: Self.lastPlayingURLKey)
+        guard lastMarkedPlayingURL != url else { return }
+        lastMarkedPlayingURL = url
+        persistenceQueue.async {
+            UserDefaults.standard.set(url, forKey: Self.lastPlayingURLKey)
+        }
     }
 
-    private func save() {
+    private func save(persistImmediately: Bool = false) {
+        let array = Array(positions.values)
+        let write = DispatchWorkItem {
+            do {
+                let data = try JSONEncoder().encode(array)
+                UserDefaults.standard.set(data, forKey: self.userDefaultsKey)
+            } catch {
+                Self.logger.error("Failed to save playback positions: \(error.localizedDescription)")
+            }
+        }
+
+        pendingSaveWorkItem?.cancel()
+        pendingSaveWorkItem = write
+
+        if persistImmediately {
+            persistenceQueue.async(execute: write)
+        } else {
+            persistenceQueue.asyncAfter(deadline: .now() + 1.5, execute: write)
+        }
+    }
+
+    func flushPendingSave() {
+        pendingSaveWorkItem?.cancel()
+        pendingSaveWorkItem = nil
         let array = Array(positions.values)
         do {
             let data = try JSONEncoder().encode(array)

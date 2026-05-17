@@ -353,6 +353,7 @@ class AppState: ObservableObject {
     private var isSleepFading = false
     private var lastABRepeatSeekTime: TimeInterval = 0
     private let playerProgressPublishInterval: TimeInterval = 0.5
+    private let playbackPositionSaveInterval: TimeInterval = 15.0
     #if DEBUG
     private var didRunDebugAutoplay = false
     #endif
@@ -988,7 +989,8 @@ extension AppState: AudioEngineDelegate {
                 self.playbackPositionManager.savePosition(
                     for: track.audioFile.url,
                     position: self.playbackProgress.currentTime,
-                    duration: self.playbackProgress.totalDuration
+                    duration: self.playbackProgress.totalDuration,
+                    persistImmediately: true
                 )
             }
 
@@ -999,6 +1001,7 @@ extension AppState: AudioEngineDelegate {
 
             // 开始播放时加载字幕并重置进度
             if state == .playing, let track = self.playlist.currentTrack {
+                self.playbackPositionManager.markLastPlaying(track.audioFile.url)
                 self.playbackProgress.update(currentTime: 0, totalDuration: self.playbackProgress.totalDuration)
                 self.playerState.updateProgress(currentTime: 0, totalDuration: self.playerState.totalDuration, force: true)
 
@@ -1060,9 +1063,9 @@ extension AppState: AudioEngineDelegate {
                 minimumTimeDelta: self.playerProgressPublishInterval
             )
 
-            // 节流保存播放进度（每5秒）
+            // 节流保存播放进度；暂停/停止时会立即落盘。
             let now = Date().timeIntervalSince1970
-            if now - self.lastPositionSaveTime >= 5.0 {
+            if now - self.lastPositionSaveTime >= self.playbackPositionSaveInterval {
                 self.lastPositionSaveTime = now
                 if let track = self.playlist.currentTrack {
                     self.playbackPositionManager.savePosition(
